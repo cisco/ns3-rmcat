@@ -18,7 +18,7 @@
 ###############################################################################
 
 def build(bld):
-    module = bld.create_ns3_module('rmcat', ['wifi', 'point-to-point', 'applications', 'internet-apps'])
+    module = bld.create_ns3_module('ns3-rmcat', ['wifi', 'point-to-point', 'applications', 'internet-apps'])
     module.source = [
         'model/apps/rmcat-sender.cc',
         'model/apps/rmcat-receiver.cc',
@@ -37,7 +37,7 @@ def build(bld):
     module.cxxflags = ['-std=c++11', '-g']
 
 
-    module_test = bld.create_ns3_module_test_library('rmcat')
+    module_test = bld.create_ns3_module_test_library('ns3-rmcat')
     module_test.source = [
         'test/rmcat-common-test.cc',
         'test/rmcat-wired-test-case.cc',
@@ -48,7 +48,7 @@ def build(bld):
         ]
 
     headers = bld(features='ns3header')
-    headers.module = 'rmcat'
+    headers.module = 'ns3-rmcat'
     headers.source = [
         'model/apps/rmcat-constants.h',
         'model/apps/rmcat-sender.h',

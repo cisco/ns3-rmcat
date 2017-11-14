@@ -79,7 +79,7 @@ Usage
 
 1. Download ns3 (ns-3.26 is currently supported, other version may also work but are untested).
 
-2. Git clone ns3-rmcat in ``ns-3.xx/src``. Initialize syncodecs submodule (``git submodule update --init --recursive``)
+2. Git clone ns3-rmcat into ``ns-3.xx/src``. Initialize syncodecs submodule (``git submodule update --init --recursive``)
 
 3. configure the workspace, ``CXXFLAGS="-std=c++11 -Wall -Werror -Wno-potentially-evaluated-expression -Wno-unused-local-typedefs" ./waf configure --enable-examples --enable-tests``.
 
@@ -89,7 +89,7 @@ Usage
 
 7. [optional] run examples, ``./waf --run "rmcat-example --log"``, ``--log`` will turn on RmcatSender/RmcatReceiver logs for debugging.
 
-8. draw the plots (need to install the python module `matplotlib <https://matplotlib.org/>`_), ``python src/rmcat/tools/process_test_logs.py testpy-output/2017-08-11-18-52-15-CUT; python src/rmcat/tools/plot_tests.py testpy-output/2017-08-11-18-52-15-CUT``
+8. draw the plots (need to install the python module `matplotlib <https://matplotlib.org/>`_), ``python src/ns3-rmcat/tools/process_test_logs.py testpy-output/2017-08-11-18-52-15-CUT; python src/ns3-rmcat/tools/plot_tests.py testpy-output/2017-08-11-18-52-15-CUT``
 
 You can also use `test.csh <tools/test.csh>`_ to run the testcases and the plot scripts in one shot:
 
@@ -98,9 +98,9 @@ You can also use `test.csh <tools/test.csh>`_ to run the testcases and the plot 
     # run from ns3 root directory: ns-3.xx/
     #
     # Example:
-    # ./src/rmcat/tools/test.csh wired 2017-07-21-rmcat-wired
-    # ./src/rmcat/tools/test.csh vparam 2017-07-21-rmcat-wired-vparam
-    # ./src/rmcat/tools/test.csh wifi 2017-07-21-rmcat-wifi
+    # ./src/ns3-rmcat/tools/test.csh wired 2017-07-21-rmcat-wired
+    # ./src/ns3-rmcat/tools/test.csh vparam 2017-07-21-rmcat-wired-vparam
+    # ./src/ns3-rmcat/tools/test.csh wifi 2017-07-21-rmcat-wifi
     #
     # The second parameter, output directory, is optional. If not specified,
     # the script will use a folder with a name based on current GMT time
@@ -120,7 +120,7 @@ To debug rmcat example, enter ns3 source directory:
 
 ::
 
-    ./waf --command-template="gdb %s" --run src/rmcat/examples/rmcat-example
+    ./waf --command-template="gdb %s" --run src/ns3-rmcat/examples/rmcat-example
 
 Future work
 **********************************

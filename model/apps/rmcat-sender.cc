@@ -117,7 +117,7 @@ void RmcatSender::SetCodecType (SyncodecType codecType)
                 "../..",  // If run with test.py, from ns-3.26/testpy-output/201...
             };
 
-            const std::string traceSubDir{"src/rmcat/model/syncodecs/video_traces/chat_firefox_h264"};
+            const std::string traceSubDir{"src/ns3-rmcat/model/syncodecs/video_traces/chat_firefox_h264"};
             std::string traceDir{};
 
             for (auto c : candidatePaths) {
