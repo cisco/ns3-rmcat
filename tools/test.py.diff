@@ -1,0 +1,74 @@
+diff --git a/test.py b/test.py
+--- a/test.py
++++ b/test.py
+@@ -1216,22 +1216,26 @@ def run_tests():
+     # with a unique name (time) to avoid collisions.  In case an error happens, we
+     # provide a runtime option to retain the temporary files.
+     #
+     # When we run examples as smoke tests, they are going to want to create
+     # lots and lots of trace files.  We aren't really interested in the contents
+     # of the trace files, so we also just stash them off in the temporary dir.
+     # The retain option also causes these unchecked trace files to be kept.
+     #
+-    date_and_time = time.strftime("%Y-%m-%d-%H-%M-%S-CUT", time.gmtime())
+ 
+-    if not os.path.exists(TMP_OUTPUT_DIR):
+-        os.makedirs(TMP_OUTPUT_DIR)
++    if options.outpath:
++        testpy_output_dir = options.outpath
++    else:
++        date_and_time = time.strftime("%Y-%m-%d-%H-%M-%S-CUT", time.gmtime())
++        if not os.path.exists(TMP_OUTPUT_DIR):
++            os.makedirs(TMP_OUTPUT_DIR)
++        testpy_output_dir = os.path.join(TMP_OUTPUT_DIR, date_and_time);
+ 
+-    testpy_output_dir = os.path.join(TMP_OUTPUT_DIR, date_and_time);
++    testpy_output_dir = os.path.abspath(testpy_output_dir)
+ 
+     if not os.path.exists(testpy_output_dir):
+         os.makedirs(testpy_output_dir)
+ 
+     #
+     # Create the main output file and start filling it with XML.  We need to 
+     # do this since the tests will just append individual results to this file.
+     #
+@@ -1376,17 +1380,18 @@ def run_tests():
+     for test in suite_list:
+         test = test.strip()
+         if len(test):
+             job = Job()
+             job.set_is_example(False)
+             job.set_is_pyexample(False)
+             job.set_display_name(test)
+             job.set_tmp_file_name(os.path.join(testpy_output_dir, "%s.xml" % test))
+-            job.set_cwd(os.getcwd())
++            # change cwd to testpy_output_dir
++            job.set_cwd(testpy_output_dir)
+             job.set_basedir(os.getcwd())
+             job.set_tempdir(testpy_output_dir)
+             if (options.multiple):
+                 multiple = ""
+             else:
+                 multiple = " --stop-on-failure"
+             if (len(options.fullness)):
+                 fullness = options.fullness.upper()
+@@ -1926,16 +1931,19 @@ def main(argv):
+     parser.add_option("-w", "--web", "--html", action="store", type="string", dest="html", default="",
+                       metavar="HTML-FILE",
+                       help="write detailed test results into HTML-FILE.html")
+ 
+     parser.add_option("-x", "--xml", action="store", type="string", dest="xml", default="",
+                       metavar="XML-FILE",
+                       help="write detailed test results into XML-FILE.xml")
+ 
++    parser.add_option("-o", "--outpath", action="store", type="string", dest="outpath", default="",
++                      metavar="OUTPUT-PATH", help="output path for test results")
++
+     global options
+     options = parser.parse_args()[0]
+     signal.signal(signal.SIGINT, sigint_hook)
+ 
+     return run_tests()
+ 
+ if __name__ == '__main__':
+     sys.exit(main(sys.argv))
