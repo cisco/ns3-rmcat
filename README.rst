@@ -85,13 +85,13 @@ Usage
 
 4. build, ``./waf build``
 
-5. run tests, ``./test.py -s rmcat-wired -w rmcat.html -r``, and ``rmcat.html`` is the test report, and log with testcase names will be located in the "testpy-output/[CURRENT UTC TIME]" directory.
+5. run tests, ``./test.py -s rmcat-wired -w rmcat.html -r``, where ``rmcat.html`` is the test report.
 
 7. [optional] run examples, ``./waf --run "rmcat-example --log"``, ``--log`` will turn on RmcatSender/RmcatReceiver logs for debugging.
 
 8. draw the plots (need to install the python module `matplotlib <https://matplotlib.org/>`_), ``python src/ns3-rmcat/tools/process_test_logs.py testpy-output/2017-08-11-18-52-15-CUT; python src/ns3-rmcat/tools/plot_tests.py testpy-output/2017-08-11-18-52-15-CUT``
 
-You can also use `test.csh <tools/test.csh>`_ to run the testcases and the plot scripts in one shot:
+You can also use `test.csh <tools/test.csh>`_ to run the testcases and the plot scripts in one shot. If you do so, logs with testcase names will be located in the "testpy-output/[CURRENT UTC TIME]" directory, if none specified.
 
 ::
 
