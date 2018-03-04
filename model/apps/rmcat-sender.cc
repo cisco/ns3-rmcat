@@ -194,13 +194,13 @@ void RmcatSender::SetRinit (float r)
 void RmcatSender::SetRmin (float r)
 {
     m_minBw = r;
-    if (m_controller) m_controller->setInitBw (m_minBw);
+    if (m_controller) m_controller->setMinBw (m_minBw);
 }
 
 void RmcatSender::SetRmax (float r)
 {
     m_maxBw = r;
-    if (m_controller) m_controller->setInitBw (m_maxBw);
+    if (m_controller) m_controller->setMaxBw (m_maxBw);
 }
 
 void RmcatSender::StartApplication ()
