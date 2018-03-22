@@ -61,7 +61,7 @@ const uint64_t NADA_PARAM_DELTA = 100;
 
 /* default parameters for accelerated ramp-up */
 
-/**  Threshold for allowed queuing dealy build up at receiver during accelerated ramp-up mode */
+/**  Threshold for allowed queuing delay build up at receiver during accelerated ramp-up mode */
 const uint64_t NADA_PARAM_QEPS = 10;
 const uint64_t NADA_PARAM_DFILT = 120; /**< Bound on filtering delay (in ms) */
 /** Upper bound on rate increase ratio in accelerated ramp-up mode (dimensionless) */
@@ -77,7 +77,7 @@ const float NADA_PARAM_QBOUND = 50.;
 const float NADA_PARAM_MULTILOSS = 7.;
 
 const float NADA_PARAM_QTH = 50.; /**< Queuing delay threshold for invoking non-linear warping (in ms) */
-const float NADA_PARAM_LAMBDA = 0.5; /**< Exponent of the non-linear warpming (dimensionless) */
+const float NADA_PARAM_LAMBDA = 0.5; /**< Exponent of the non-linear warping (dimensionless) */
 
 /* default parameters for calculating aggregated congestion signal */
 
@@ -150,10 +150,12 @@ bool NadaController::processFeedback(uint64_t now,
                                      uint64_t rxTimestamp,
                                      uint8_t ecn) {
     /* First of all, call the superclass */
-    const bool res = SenderBasedController::processFeedback(now,
-                                                            sequence,
-                                                            rxTimestamp,
-                                                            ecn);
+    if (!SenderBasedController::processFeedback(now,
+                                                sequence,
+                                                rxTimestamp,
+                                                ecn)) {
+        return false;
+    }
 
     /* Update calculation of reference rate (r_ref)
      * if last calculation occurred more than NADA_PARAM_DELTA
@@ -163,7 +165,7 @@ bool NadaController::processFeedback(uint64_t now,
         /* First time receiving a feedback message */
         m_lastTimeCalc = now;
         m_lastTimeCalcValid = true;
-        return res;
+        return true;
     }
 
     assert(lessThan(m_lastTimeCalc, now + 1));
@@ -177,7 +179,7 @@ bool NadaController::processFeedback(uint64_t now,
 
         m_lastTimeCalc = now;
     }
-    return res;
+    return true;
 }
 
 /**
@@ -242,7 +244,7 @@ void NadaController::updateMetrics(uint64_t now) {
 
     float avgInt;
     uint32_t currentInt;
-    float avgIntOK = getLossIntervalInfo(avgInt, currentInt);
+    bool avgIntOK = getLossIntervalInfo(avgInt, currentInt);
     m_lossesSeen = avgIntOK;
     if (avgIntOK) {
         m_avgInt = avgInt;

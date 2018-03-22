@@ -160,6 +160,9 @@ void WiredTopo::SetupAppNode (Ptr<Node> node, int bottleneckIdx, uint32_t pDelay
     address.SetBase (stringStream.str ().c_str (), "255.255.255.0");
     address.Assign (devices);
 
+    TrafficControlHelper tch;
+    tch.Uninstall (devices);
+
     //Uncomment the lines below to ease troubleshooting
     //if (bottleneckIdx == 0) {
     //    std::ostringstream stringStream0;
