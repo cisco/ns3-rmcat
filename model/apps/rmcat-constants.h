@@ -62,7 +62,7 @@ const uint32_t MAX_QUEUE_SIZE_SANITY = 80 * 1000 * 1000; //bytes
 
 /* topology parameters */
 const uint32_t T_MAX_S = 500;  // maximum simulation duration  in seconds
-const uint32_t T_TCP_LOG = 1;  // whether to log TCP flows
+const double T_TCP_LOG = 2;  // sample interval for log TCP flows
 
 /* Default topology setting parameters */
 const uint32_t WIFI_TOPO_MACQUEUE_MAXNPKTS = 1000;
