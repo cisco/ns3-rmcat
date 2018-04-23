@@ -63,7 +63,7 @@ public:
      * prints calculated metrics at regular intervals
      */
     virtual bool processFeedback(uint64_t now,
-                                 uint32_t sequence,
+                                 uint16_t sequence,
                                  uint64_t rxTimestamp,
                                  uint8_t ecn=0);
     /**

@@ -63,7 +63,7 @@ private:
 
     void EnqueuePacket ();
     void SendPacket (uint64_t msSlept);
-    void SendOverSleep (uint32_t seq, uint32_t bytesToSend);
+    void SendOverSleep (uint16_t seq, int64_t nowUs, uint32_t bytesToSend);
     void RecvPacket (Ptr<Socket> socket);
     void CalcBufferParams (uint64_t now);
 
@@ -76,8 +76,9 @@ private:
     float m_minBw;
     float m_maxBw;
     bool m_paused;
-    uint32_t m_flowId;
-    uint32_t m_sequence;
+    uint32_t m_srcId;
+    uint16_t m_sequence;
+    uint32_t m_rtpTsOffset;
     Ptr<Socket> m_socket;
     EventId m_enqueueEvent;
     EventId m_sendEvent;

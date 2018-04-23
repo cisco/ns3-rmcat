@@ -46,8 +46,8 @@ const uint32_t RMCAT_LOG_PRINT_PRECISION = 2;  /* default precision for logs */
 class InterLossState {
 public:
     InterLossState();
-    std::deque<uint32_t> intervals;
-    uint32_t expectedSeq;
+    std::deque<uint16_t> intervals;
+    uint16_t expectedSeq;
     bool initialized; // did the first loss happen?
 };
 
@@ -92,14 +92,14 @@ public:
 
     /** To avoid future complexity and defects, we make the following
      *  assumptions regarding wrapping of unsigned integers:
-     *    - sequences, uint32_t, can wrap (just like TCP)
+     *    - sequences, uint16_t, can wrap (just like TCP)
      *    - timestamps, uint64_t, can wrap (despite being 64 bits long)
      *    - delays, uint64_t, can wrap (easily), as they are obtained from
      *      subtraction of timestamps obtained at different endpoints,
      *      which may have non-synchronized clocks.
      */
     struct PacketRecord {
-        uint32_t sequence;
+        uint16_t sequence;
         uint64_t txTimestamp;
         uint32_t size;
         uint64_t owd;
@@ -193,7 +193,7 @@ public:
      *                               function's logic
      */
     virtual bool processSendPacket(uint64_t txTimestamp,
-                                   uint32_t sequence,
+                                   uint16_t sequence,
                                    uint32_t size); // in Bytes
 
     /**
@@ -222,7 +222,7 @@ public:
      *                               function's logic
      */
     virtual bool processFeedback(uint64_t now,
-                                 uint32_t sequence,
+                                 uint16_t sequence,
                                  uint64_t rxTimestamp,
                                  uint8_t ecn=0);
 
@@ -333,10 +333,10 @@ protected:
      *         inter-loss intervals to return; in this case, the output parameters are not
      *         valid). True otherwise
      */
-    bool getLossIntervalInfo(float& avgInterval, uint32_t& currentInterval) const;
+    bool getLossIntervalInfo(float& avgInterval, uint16_t& currentInterval) const;
 
     bool m_firstSend; /**< true if at least one packet has been sent */
-    uint32_t m_lastSequence; /**< sequence of the last packet sent */
+    uint16_t m_lastSequence; /**< sequence of the last packet sent */
     /**
      * Estimation of the network propagation delay, plus clock difference
      * between sender and receiver endpoints
