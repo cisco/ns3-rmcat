@@ -26,7 +26,7 @@
  * NADA: A Unified Congestion Control Scheme for Real-Time Media
  * https://tools.ietf.org/html/draft-ietf-rmcat-nada-05
  *
- * @version 0.1.0
+ * @version 0.1.1
  * @author Jiantao Fu
  * @author Sergio Mena
  * @author Xiaoqing Zhu
