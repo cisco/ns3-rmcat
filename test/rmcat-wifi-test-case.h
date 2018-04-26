@@ -19,7 +19,7 @@
  * @file
  * Template for rmcat wifi test cases.
  *
- * @version 0.1.0
+ * @version 0.1.1
  * @author Jiantao Fu
  * @author Sergio Mena
  * @author Xiaoqing Zhu
