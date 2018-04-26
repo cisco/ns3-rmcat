@@ -20,8 +20,8 @@
  * Header interface of RTP packets (RFC 3550) for ns3-rmcat.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -30,8 +30,15 @@
 
 #include "ns3/header.h"
 #include "ns3/type-id.h"
+#include <map>
+#include <set>
 
 namespace ns3 {
+
+void RtpHdrSetBit (uint8_t& val, uint8_t pos, bool bit);
+bool RtpHdrGetBit (uint8_t val, uint8_t pos);
+
+const uint8_t RTP_VERSION = 2;
 
 //-------------------- RTP HEADER (RFC 3550) ----------------------//
 //   0                   1                   2                   3
@@ -46,13 +53,11 @@ namespace ns3 {
 //  |            contributing source (CSRC) identifiers             |
 //  |                             ....                              |
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-#define RTP_VERSION    2
-
-class RtpHeader : public ns3::Header
+class RtpHeader : public Header
 {
 public:
     RtpHeader ();
+    RtpHeader (uint8_t payloadType);
     virtual ~RtpHeader ();
 
     static ns3::TypeId GetTypeId ();
@@ -60,8 +65,26 @@ public:
     virtual uint32_t GetSerializedSize () const;
     virtual void Serialize (ns3::Buffer::Iterator start) const;
     virtual uint32_t Deserialize (ns3::Buffer::Iterator start);
-    virtual void Print (std::ostream &os) const;
+    virtual void Print (std::ostream& os) const;
 
+    bool IsPadding () const;
+    void SetPadding (bool padding);
+    bool IsExtension () const;
+    void SetExtension (bool extension);
+    bool IsMarker () const;
+    void SetMarker (bool marker);
+    uint8_t GetPayloadType () const;
+    void SetPayloadType (uint8_t payloadType);
+    uint16_t GetSequence () const;
+    void SetSequence (uint16_t sequence);
+    uint32_t GetSsrc () const;
+    void SetSsrc (uint32_t ssrc);
+    uint32_t GetTimestamp () const;
+    void SetTimestamp (uint32_t timestamp);
+    const std::set<uint32_t>& GetCsrcs () const;
+    bool AddCsrc (uint32_t csrc);
+
+protected:
     bool m_padding;
     bool m_extension;
     bool m_marker;
@@ -69,45 +92,166 @@ public:
     uint16_t m_sequence;
     uint32_t m_timestamp;
     uint32_t m_ssrc;
-    std::vector<uint32_t> m_csrc;
-
-protected:
-    static void SetBit (uint8_t& val, uint8_t pos, bool bit);
-    static bool GetBit (uint8_t val, uint8_t pos);
-
+    std::set<uint32_t> m_csrcs;
 };
 
 
-// TODO (deferred): implement header format as described in
-//                  draft-dt-rmcat-feedback-message
-
-//--------------------- FEEDBACK HEADER ---------------------------//
+//----------------- Common RCTP HEADER (RFC 3550) -----------------//
 //   0                   1                   2                   3
 //   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                           flow_id                             |
+//  |V=2|P| Type/Cnt|       PT      |          length               |
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                          sequence                             |
+//  |                 SSRC of RTCP packet sender                    |
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                  receive t(ime)st(a)mp  (1)                   |
-//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                  receive t(ime)st(a)mp  (2)                   |
-//  +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-class FeedbackHeader : public ns3::Header
+class RtcpHeader : public Header
 {
 public:
-    virtual ~FeedbackHeader ();
+    enum PayloadType {
+        RTCP_SMPTETC = 194,
+        RTCP_IJ      = 195,
+        RTCP_SR      = 200,
+        RTCP_RR      = 201,
+        RTCP_SDES    = 202,
+        RTCP_BYE     = 203,
+        RTCP_APP     = 204,
+        RTP_FB       = 205,
+        RTP_PSFB     = 206,
+        RTP_XR       = 207,
+        RTP_RSI      = 209,
+        RTP_TOKEN    = 210,
+        RTP_IDMS     = 211,
+        RTP_RSNM     = 213,
+    };
+
+    enum SdesType{
+        RTCP_SDES_END   = 0,
+        RTCP_SDES_CNAME = 1,
+        RTCP_SDES_NAME  = 2,
+        RTCP_SDES_EMAIL = 3,
+        RTCP_SDES_PHONE = 4,
+        RTCP_SDES_LOC   = 5,
+        RTCP_SDES_TOOL  = 6,
+        RTCP_SDES_NOTE  = 7,
+        RTCP_SDES_PRIV  = 8,
+        RTCP_SDES_APSI  = 10,
+    };
+
+    enum RtpFeedbackType {
+        RTCP_RTPFB_GNACK  =  1,
+        RTCP_RTPFB_TMMBR  =  3,
+        RTCP_RTPFB_TMMBN  =  4,
+        RTCP_RTPFB_SR_REQ =  5,
+        RTCP_RTPFB_RAMS   =  6,
+        RTCP_RTPFB_TLLEI  =  7,
+        RTCP_RTPFB_ECN_FB =  8,
+        RTCP_RTPFB_PR     =  9,
+        RTCP_RTPFB_CC     = 15,  // TODO (deferred): Change to IANA-assigned value
+    };
+
+    RtcpHeader ();
+    RtcpHeader (uint8_t packetType);
+    RtcpHeader (uint8_t packetType, uint8_t subType);
+    virtual ~RtcpHeader ();
 
     static ns3::TypeId GetTypeId ();
     virtual ns3::TypeId GetInstanceTypeId () const;
     virtual uint32_t GetSerializedSize () const;
     virtual void Serialize (ns3::Buffer::Iterator start) const;
     virtual uint32_t Deserialize (ns3::Buffer::Iterator start);
-    virtual void Print (std::ostream &os) const;
+    virtual void Print (std::ostream& os) const;
 
-    uint32_t flow_id;
-    uint32_t sequence;
-    uint64_t receive_tstmp;
+    bool IsPadding () const;
+    void SetPadding (bool padding);
+    uint8_t GetTypeOrCount () const;
+    void SetTypeOrCount (uint8_t typeOrCnt);
+    uint8_t GetPacketType () const;
+    void SetPacketType (uint8_t packetType);
+    uint32_t GetSendSsrc () const;
+    void SetSendSsrc (uint32_t sendSsrc);
+
+protected:
+    void PrintN (std::ostream& os) const;
+    void SerializeCommon (ns3::Buffer::Iterator& start) const;
+    uint32_t DeserializeCommon (ns3::Buffer::Iterator& start);
+
+    bool m_padding;
+    uint8_t m_typeOrCnt;
+    uint8_t m_packetType;
+    uint16_t m_length;
+    uint32_t m_sendSsrc;
+};
+
+//-- RCTP CCFB HEADER (draft-ietf-avtcore-cc-feedback-message-01) -//
+//   0                   1                   2                   3
+//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |V=2|P| FMT=CCFB| PT=RTPFB=205  |          length               |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |                 SSRC of RTCP packet sender                    |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |                   SSRC of 1st RTP Stream                      |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |          begin_seq            |             end_seq           |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |L|ECN|  Arrival time offset    | ...                           .
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  .                                                               .
+//  .                                                               .
+//  .                                                               .
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |                   SSRC of nth RTP Stream                      |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |          begin_seq            |             end_seq           |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |L|ECN|  Arrival time offset    | ...                           |
+//  .                                                               .
+//  .                                                               .
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//  |                        Report Timestamp                       |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+class CCFeedbackHeader : public RtcpHeader
+{
+public:
+    class MetricBlock
+    {
+    public:
+        static constexpr uint16_t m_overrange = 0x1FFE;
+        static constexpr uint16_t m_unavailable = 0x1FFF;
+        uint8_t m_ecn;
+        uint64_t m_timestampUs;
+        uint16_t m_ato;
+    };
+
+    enum RejectReason {
+        CCFB_NONE,      /**< Feedback was added correctly */
+        CCFB_DUPLICATE, /**< Feedback of duplicate packet */
+        CCFB_BAD_ECN,   /**< ECN value takes more than two bits */
+        CCFB_TOO_LONG,  /**< Adding this sequence number would make the packet too long */
+    };
+    typedef std::map<uint16_t /* sequence */, MetricBlock> ReportBlock_t;
+
+    CCFeedbackHeader ();
+    virtual ~CCFeedbackHeader ();
+
+    static ns3::TypeId GetTypeId ();
+    virtual ns3::TypeId GetInstanceTypeId () const;
+    virtual uint32_t GetSerializedSize () const;
+    virtual void Serialize (ns3::Buffer::Iterator start) const;
+    virtual uint32_t Deserialize (ns3::Buffer::Iterator start);
+    virtual void Print (std::ostream& os) const;
+
+    RejectReason AddFeedback (uint32_t ssrc, uint16_t seq, uint64_t timestampUs, uint8_t ecn=0);
+    void GetSsrcList (std::set<uint32_t>& rv) const;
+    bool GetMetricList (uint32_t ssrc, std::vector<std::pair<uint16_t, MetricBlock> >& rv) const;
+
+protected:
+    static std::pair<uint16_t, uint16_t> CalculateBeginStopSeq (const ReportBlock_t& rb);
+    bool UpdateLength ();
+    uint16_t TsToAto (uint64_t tsUs) const;
+    uint64_t AtoToTs (uint16_t ato) const;
+    std::map<uint32_t /* SSRC */, ReportBlock_t> m_reportBlocks;
+    uint64_t m_latestTsUs;
 };
 
 }

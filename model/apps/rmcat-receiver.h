@@ -36,6 +36,7 @@ namespace ns3 {
 class RmcatReceiver: public Application
 {
 public:
+    RmcatReceiver ();
     virtual ~RmcatReceiver ();
 
     void Setup (uint16_t port);
@@ -51,7 +52,8 @@ private:
 private:
     bool m_running;
     bool m_waiting;
-    uint32_t m_srcId;
+    uint32_t m_ssrc;
+    uint32_t m_remoteSsrc;
     Ipv4Address m_srcIp;
     uint16_t m_srcPort;
     Ptr<Socket> m_socket;

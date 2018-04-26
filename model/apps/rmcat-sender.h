@@ -76,7 +76,7 @@ private:
     float m_minBw;
     float m_maxBw;
     bool m_paused;
-    uint32_t m_srcId;
+    uint32_t m_ssrc;
     uint16_t m_sequence;
     uint32_t m_rtpTsOffset;
     Ptr<Socket> m_socket;

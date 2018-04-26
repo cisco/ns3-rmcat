@@ -48,9 +48,10 @@ RmcatSender::RmcatSender ()
 , m_minBw{0}
 , m_maxBw{0}
 , m_paused{false}
-, m_srcId{0}
+, m_ssrc{0}
 , m_sequence{0}
 , m_rtpTsOffset{0}
+, m_socket{NULL}
 , m_enqueueEvent{}
 , m_sendEvent{}
 , m_sendOversleepEvent{}
@@ -206,7 +207,7 @@ void RmcatSender::SetRmax (float r)
 
 void RmcatSender::StartApplication ()
 {
-    m_srcId = rand ();
+    m_ssrc = rand ();
     // RTP initial values for sequence number and timestamp SHOULD be random (RFC 3550)
     m_sequence = rand ();
     m_rtpTsOffset = rand ();
@@ -265,9 +266,9 @@ void RmcatSender::EnqueuePacket ()
 
     if (m_rateShapingBuf.size () == 1) {
         // Buffer was empty
-        const auto now = Simulator::Now ().GetMilliSeconds ();
-        const auto msToNextSentPacket = now < m_nextSendTstmp ?
-                                                m_nextSendTstmp - now : 0;
+        const uint64_t now = Simulator::Now ().GetMilliSeconds ();
+        const uint64_t msToNextSentPacket = now < m_nextSendTstmp ?
+                                                    m_nextSendTstmp - now : 0;
         NS_LOG_INFO ("(Re-)starting the send timer: now " << now
                      << ", bytesToSend " << bytesToSend
                      << ", msToNextSentPacket " << msToNextSentPacket
@@ -299,16 +300,16 @@ void RmcatSender::SendPacket (uint64_t msSlept)
                  << ", buffer bytes: " << m_rateShapingBytes);
 
     // Synthetic oversleep: random uniform [0% .. 1%]
-    auto oversleepMs = msSlept * (rand () % 100) / 10000;
+    uint64_t oversleepMs = msSlept * (rand () % 100) / 10000; // TODO (next patch): change to Us
     Time tOver{MilliSeconds (oversleepMs)};
     m_sendOversleepEvent = Simulator::Schedule (tOver, &RmcatSender::SendOverSleep,
                                                 this, m_sequence, nowUs, bytesToSend);
 
-    m_controller->processSendPacket (nowUs / 1000, m_sequence++, bytesToSend);
+    m_controller->processSendPacket (nowUs / 1000, m_sequence++, bytesToSend); // TODO (next patch): change param to Us
 
     // schedule next sendData
-    auto msToNextSentPacketD = static_cast<double> (bytesToSend) * 8. * 1000. / m_rSend;
-    auto msToNextSentPacket = static_cast<uint64_t> (msToNextSentPacketD);
+    const double msToNextSentPacketD = double (bytesToSend) * 8. * 1000. / m_rSend;
+    const uint64_t msToNextSentPacket = uint64_t (msToNextSentPacketD);
 
     if (!USE_BUFFER || m_rateShapingBuf.size () == 0) {
         // Buffer became empty
@@ -322,14 +323,13 @@ void RmcatSender::SendPacket (uint64_t msSlept)
 
 void RmcatSender::SendOverSleep (uint16_t seq, int64_t nowUs, uint32_t bytesToSend) {
 
-    ns3::RtpHeader header{};
-    header.m_payloadType = 96; // Dynamic payload type, according to RFC 3551
-    header.m_sequence = seq;
+    ns3::RtpHeader header{96}; // 96: dynamic payload type, according to RFC 3551
+    header.SetSequence (seq);
     NS_ASSERT (nowUs >= 0);
     // Most video payload types in RFC 3551, Table 5, use a 90 KHz clock
-    // Therefore, assuming 90 KHz clock for RTP timestamps
-    header.m_timestamp = m_rtpTsOffset + uint32_t (nowUs * 90 / 1000);
-    header.m_ssrc = m_srcId;
+    // Therefore, assuming 90 KHz clock for RTP timestamps
+    header.SetTimestamp (m_rtpTsOffset + uint32_t (nowUs * 90 / 1000));;
+    header.SetSsrc (m_ssrc);
 
     auto packet = Create<Packet> (bytesToSend);
     packet->AddHeader (header);
@@ -350,18 +350,29 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
     NS_ASSERT (rport == m_destPort);
 
     // get the feedback header
-    FeedbackHeader header;
+    const uint64_t nowUs = Simulator::Now ().GetMicroSeconds ();
+    CCFeedbackHeader header{};
     NS_LOG_INFO ("RmcatSender::RecvPacket, " << Packet->ToString ());
     Packet->RemoveHeader (header);
-    NS_ASSERT (header.flow_id == m_srcId);
-
-    const auto now = Simulator::Now ().GetMilliSeconds ();
-    NS_ASSERT (header.receive_tstmp <= now);
-
-    m_controller->processFeedback (now,
-                                   uint16_t (header.sequence), //TODO Still using old feedback header
-                                   header.receive_tstmp);
-    CalcBufferParams (now);
+    std::set<uint32_t> ssrcList{};
+    header.GetSsrcList (ssrcList);
+    if (ssrcList.count (m_ssrc) == 0) {
+        NS_LOG_INFO ("RmcatSender::Received Feedback packet with no data for SSRC " << m_ssrc);
+        CalcBufferParams (nowUs / 1000); // TODO (next patch): Change param to Us
+        return;
+    }
+    std::vector<std::pair<uint16_t,
+                          CCFeedbackHeader::MetricBlock> > feedback{};
+    const bool res = header.GetMetricList (m_ssrc, feedback);
+    NS_ASSERT (res);
+    for (auto& item : feedback) {
+        const auto sequence = item.first;
+        const auto timestampUs = item.second.m_timestampUs;
+        const auto ecn = item.second.m_ecn;
+        NS_ASSERT (timestampUs <= nowUs);
+        m_controller->processFeedback (nowUs / 1000, sequence, timestampUs / 1000, ecn); // TODO (next patch): Change params to Us
+    }
+    CalcBufferParams (nowUs / 1000);
 }
 
 void RmcatSender::CalcBufferParams (uint64_t now)
