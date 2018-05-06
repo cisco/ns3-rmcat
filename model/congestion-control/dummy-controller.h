@@ -20,8 +20,8 @@
  * Dummy controller (CBR) interface for rmcat ns3 module.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -39,10 +39,10 @@ namespace rmcat {
 class DummyController: public SenderBasedController
 {
 public:
-    /** Class constructor */
+    /** Class constructor */
     DummyController();
 
-    /** Class destructor */
+    /** Class destructor */
     virtual ~DummyController();
 
     /**

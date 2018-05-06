@@ -20,8 +20,8 @@
  * Wired network topology setup for rmcat ns3 module.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -49,16 +49,16 @@ namespace ns3 {
  * +----+ 10.x.y.0  |                  |  11.x.y.0 +----+
  * | ln +-----------+                  +-----------+ rn |
  * +----+                                          +----+
- * where n = 256 * x + y
+ * where n = 256 * x + y
  */
 
 class WiredTopo: public Topo
 {
 public:
-    /** Class constructor */
+    /** Class constructor */
     WiredTopo ();
 
-    /** Class destructor */
+    /** Class destructor */
     virtual ~WiredTopo ();
 
     /**
@@ -94,7 +94,7 @@ public:
      * Install a one-way constant bitrate (CBR) UDP flow in a pair of
      * (left-right) nodes
      *
-     * @param [in] serverPort UDP port where the receiver CBR UDP application
+     * @param [in] serverPort UDP port where the receiver CBR UDP application
      *                        is to receive datagrams
      * @param [in] bitrate Bitrate (constant) at which the flow is to operate
      * @param [in] packetSize Size of of the data to be shipped in each datagram

@@ -20,8 +20,8 @@
  * Receiver application implementation for rmcat ns3 module.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -86,7 +86,7 @@ void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
         NS_ASSERT (m_srcPort == srcPort);
     }
 
-    //TODO (deferred): We need to aggregate feedback information
+    //TODO (deferred): We need to aggregate feedback information
     //                 (for the moment, one feedback packet per media packet)
 
     auto recvTimestamp = Simulator::Now ().GetMilliSeconds ();

@@ -21,8 +21,8 @@
  * for rmcat ns3 module.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -106,10 +106,10 @@ public:
         uint64_t rtt;
     };
 
-    /** Class constructor */
+    /** Class constructor */
     SenderBasedController();
 
-    /** Class destructor */
+    /** Class destructor */
     virtual ~SenderBasedController();
 
     /**
@@ -172,7 +172,7 @@ public:
      * application provides the congestion controller with information on the
      * media packet being sent
      *
-     * This member function is not pure virtual. All subclasses should call
+     * This member function is not pure virtual. All subclasses should call
      * the superclass's method to ensure the proper operation of the common
      * logic implemented by the superclass
      *
@@ -201,7 +201,7 @@ public:
      * application calls this function to deliver the data contained in the
      * feedback packet to the congestion controller
      *
-     * This member function is not pure virtual. All subclasses should call
+     * This member function is not pure virtual. All subclasses should call
      * the superclass's method to ensure the proper operation of the common
      * logic implemented by the superclass
      *

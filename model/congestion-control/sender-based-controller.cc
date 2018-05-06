@@ -21,8 +21,8 @@
  * sender-based controller.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 #include "sender-based-controller.h"
@@ -276,7 +276,7 @@ uint64_t SenderBasedController::getHistoryLength() const {
 
 // These functions calculate different metrics based on the feedback received.
 // Although they could be considered part of the NADA algorithm, we have
-// defined them in the superclass because they could also be useful to other
+// defined them in the superclass because they could also be useful to other
 // algorithms
 bool SenderBasedController::getCurrentQdelay(uint64_t& qdelay) const {
     // 15-tab minimum filtering

@@ -23,8 +23,8 @@
  *  - [Optionally] UDP flows
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -195,9 +195,9 @@ int main (int argc, char *argv[])
     std::string strArg  = "strArg default";
 
     CommandLine cmd;
-    cmd.AddValue ("rmcat", "Number of RMCAT (NADA) flows", nRmcat);
-    cmd.AddValue ("tcp", "Number of TCP flows", nTcp);
-    cmd.AddValue ("udp", "Number of UDP flows", nUdp);
+    cmd.AddValue ("rmcat", "Number of RMCAT (NADA) flows", nRmcat);
+    cmd.AddValue ("tcp", "Number of TCP flows", nTcp);
+    cmd.AddValue ("udp", "Number of UDP flows", nUdp);
     cmd.AddValue ("log", "Turn on logs", log);
     cmd.AddValue ("nada", "true: use NADA, false: use dummy", nada);
     cmd.Parse (argc, argv);
@@ -239,7 +239,7 @@ int main (int argc, char *argv[])
         InstallTCP (nodes.Get (0), nodes.Get (1), port++, start, end);
     }
 
-    // UDP parameters
+    // UDP parameters
     const uint64_t bandwidth = RMCAT_DEFAULT_RMAX / 4;
     const uint32_t pktSize = DEFAULT_PACKET_SIZE;
 

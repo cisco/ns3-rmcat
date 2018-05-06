@@ -20,8 +20,8 @@
  * Wifi network topology setup for rmcat ns3 module.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -54,7 +54,7 @@ namespace ns3 {
 class WifiTopo: public Topo
 {
 public:
-    /** Class destructor */
+    /** Class destructor */
     virtual ~WifiTopo ();
 
     /**
@@ -116,7 +116,7 @@ public:
      *
      * @param [in] nodeId      index of the wifi node where the CBR-over-UDP
      *                         flow is to be installed.
-     * @param [in] serverPort UDP port where the receiver CBR UDP application
+     * @param [in] serverPort UDP port where the receiver CBR UDP application
      *                        is to receive datagrams
      * @param [in] bitrate Bitrate (constant) at which the flow is to operate
      * @param [in] packetSize Size of of the data to be shipped in each

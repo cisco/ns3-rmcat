@@ -20,8 +20,8 @@
  * Wired network topology setup implementation for rmcat ns3 module.
  *
  * @version 0.1.1
- * @author Jiantao Fu
- * @author Sergio Mena
+ * @author Jiantao Fu
+ * @author Sergio Mena
  * @author Xiaoqing Zhu
  */
 
@@ -145,7 +145,7 @@ void WiredTopo::SetupAppNode (Ptr<Node> node, int bottleneckIdx, uint32_t pDelay
         TimeValue delay;
         channel->GetAttribute ("Delay", delay);
         const uint64_t us = delay.Get ().GetMicroSeconds ();
-        // variable us is 5% of the total base delay
+        // variable us is 5% of the total base delay
         const uint64_t total = us * 100 / 5;
         NS_ASSERT (us <= total);
         NS_ASSERT (total - us <= pDelayMs * 1000);
