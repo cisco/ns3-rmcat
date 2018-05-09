@@ -35,6 +35,7 @@ const uint32_t DEFAULT_PACKET_SIZE = 1000;
 const uint32_t IPV4_HEADER_SIZE = 20;
 const uint32_t UDP_HEADER_SIZE = 8;
 const uint32_t IPV4_UDP_OVERHEAD = IPV4_HEADER_SIZE + UDP_HEADER_SIZE;
+const uint64_t RMCAT_FEEDBACK_PERIOD_US = 100 * 1000;
 
 // syncodec parameters
 const uint32_t SYNCODEC_DEFAULT_FPS = 30;

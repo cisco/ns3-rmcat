@@ -143,7 +143,7 @@ void NadaController::reset() {
  * Implementation of the #processFeedback API
  * in the SenderBasedController class
  *
- * TODO: (deferred) Add support for ECN marking
+ * TODO (deferred): Add support for ECN marking
  */
 bool NadaController::processFeedback(uint64_t nowUs,
                                      uint16_t sequence,

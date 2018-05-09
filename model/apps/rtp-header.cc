@@ -287,6 +287,15 @@ RtcpHeader::RtcpHeader (uint8_t packetType, uint8_t subType)
 
 RtcpHeader::~RtcpHeader () {}
 
+void RtcpHeader::Clear ()
+{
+    m_padding = false;
+    m_typeOrCnt = 0;
+    m_packetType = 0;
+    m_length = 1;
+    m_sendSsrc = 0;
+}
+
 TypeId RtcpHeader::GetTypeId ()
 {
     static TypeId tid = TypeId ("RtcpHeader")
@@ -414,6 +423,16 @@ CCFeedbackHeader::CCFeedbackHeader ()
 
 CCFeedbackHeader::~CCFeedbackHeader () {}
 
+void CCFeedbackHeader::Clear ()
+{
+    RtcpHeader::Clear ();
+    m_packetType = RTP_FB;
+    m_typeOrCnt = RTCP_RTPFB_CC;
+    ++m_length; // report timestamp field
+    m_reportBlocks.clear();
+    m_latestTsUs = 0;
+}
+
 TypeId CCFeedbackHeader::GetTypeId ()
 {
     static TypeId tid = TypeId ("CCFeedbackHeader")
@@ -427,7 +446,6 @@ TypeId CCFeedbackHeader::GetInstanceTypeId () const
 {
     return GetTypeId ();
 }
-
 
 CCFeedbackHeader::RejectReason
 CCFeedbackHeader::AddFeedback (uint32_t ssrc, uint16_t seq, uint64_t timestampUs, uint8_t ecn)
@@ -494,7 +512,7 @@ uint32_t CCFeedbackHeader::GetSerializedSize () const
 
 void CCFeedbackHeader::Serialize (Buffer::Iterator start) const
 {
-    NS_ASSERT (m_length >= 2); // TODO: To authors: are 0 report blocks allowed?
+    NS_ASSERT (m_length >= 2); // TODO (authors): 0 report blocks should be allowed
     RtcpHeader::SerializeCommon (start);
 
     for (const auto& rb : m_reportBlocks) {
@@ -503,7 +521,7 @@ void CCFeedbackHeader::Serialize (Buffer::Iterator start) const
         const uint16_t beginSeq = beginStop.first;
         const uint16_t stopSeq = beginStop.second;
         start.WriteHtonU16 (beginSeq);
-        start.WriteHtonU16 (stopSeq - 1);
+        start.WriteHtonU16 (uint16_t (stopSeq - 1));
         NS_ASSERT (!rb.second.empty ()); // at least one metric block
         for (uint16_t i = beginSeq; i != stopSeq; ++i) {
             const auto& mb_it = rb.second.find (i);
@@ -546,7 +564,8 @@ uint32_t CCFeedbackHeader::Deserialize (Buffer::Iterator start)
         const uint16_t beginSeq = start.ReadNtohU16 ();
         const uint16_t endSeq = start.ReadNtohU16 ();
         len_left -= 4;
-        const uint32_t nMetricBlocks = uint32_t (endSeq - beginSeq) + 1; //this wraps properly
+        const uint16_t diff = endSeq - beginSeq; //this wraps properly
+        const uint32_t nMetricBlocks = uint32_t (diff) + 1;
         NS_ASSERT (nMetricBlocks <= 0xffff);// length of 65536 not supported
         const uint32_t nPaddingBlocks = nMetricBlocks % 2;
         NS_ASSERT (len_left >= nMetricBlocks + nPaddingBlocks);
@@ -572,7 +591,7 @@ uint32_t CCFeedbackHeader::Deserialize (Buffer::Iterator start)
     // TODO (next patch): convert from NTP time to Us
     m_latestTsUs = start.ReadNtohU32 ();
     // Populate all timestamps once Report Timestamp is known
-    // TODO: report to authors
+    // TODO (authors): Need second pass once report ts is deserialized
     for (auto& rb : m_reportBlocks) {
         for (auto& mb : rb.second) {
             mb.second.m_timestampUs = AtoToTs (mb.second.m_ato);
@@ -592,7 +611,7 @@ void CCFeedbackHeader::Print (std::ostream& os) const
         const uint16_t stopSeq = beginStop.second;
         os << ", report block #" << i << " = "
            << "{ SSRC = " << rb.first
-           << " [" << beginSeq << ".." << (stopSeq - 1) << "] --> ";
+           << " [" << beginSeq << ".." << uint16_t (stopSeq - 1) << "] --> ";
         for (uint16_t j = beginSeq; j != stopSeq; ++j) {
             const auto& mb_it = rb.second.find (j);
             const bool received = (mb_it != rb.second.end ());
@@ -626,16 +645,20 @@ CCFeedbackHeader::CalculateBeginStopSeq (const ReportBlock_t& rb)
     uint16_t high = mb_it->first;
     uint16_t max_lo = low;
     uint16_t max_hi = high;
+    ++mb_it;
     for (; mb_it != rb.end (); ++mb_it) {
         low = high;
         high = mb_it->first;
+        NS_ASSERT (low < high);
+        NS_ASSERT (max_lo < max_hi);
         if ((high - low) > (max_hi - max_lo)) {
             max_lo = low;
             max_hi = high;
         }
     }
     //check the gap across wrapping
-    if ((first - high) > (max_hi - max_lo)) {
+    NS_ASSERT (max_lo < max_hi);
+    if (uint16_t (first - high) > (max_hi - max_lo)) {
         max_lo = high;
         max_hi = first;
     }
@@ -681,6 +704,7 @@ uint64_t CCFeedbackHeader::AtoToTs (uint16_t ato) const
         //print warning
     }
     const uint64_t offsetUs = uint64_t (ato) * 1000 * 1000 / 1024;
+    NS_ASSERT (offsetUs <= m_latestTsUs);
     return m_latestTsUs - offsetUs;
 }
 

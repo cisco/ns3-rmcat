@@ -370,6 +370,9 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
         const auto timestampUs = item.second.m_timestampUs;
         const auto ecn = item.second.m_ecn;
         NS_ASSERT (timestampUs <= nowUs);
+        // TODO (Xiaoqing): Define a new API call to controller that takes the whole vector at once
+        //                  Adapt NADA to only use the last metric for measuring delay
+        //                  Careful! We still need to look at all packets for loss information
         m_controller->processFeedback (nowUs, sequence, timestampUs, ecn);
     }
     CalcBufferParams (nowUs);
@@ -390,7 +393,7 @@ void RmcatSender::CalcBufferParams (uint64_t nowUs)
 
     syncodecs::Codec& codec = *m_codec;
 
-    // TODO (deferred):  encapsulate rate shaping buffer in a separate class
+    // TODO (deferred): encapsulate rate shaping buffer in a separate class
     if (USE_BUFFER && static_cast<bool> (codec)) {
         const float fps = 1. / static_cast<float>  (codec->second);
         m_rVin = std::max<float> (m_minBw, r_ref - BETA_V * 8. * bufferLen * fps);

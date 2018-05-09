@@ -128,5 +128,3 @@ Future work
 Adding LTE topology and test cases
 
 Add support for ECN marking
-
-Use the feedback message format from rmcat for aggregating feedback

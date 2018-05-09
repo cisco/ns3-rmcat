@@ -153,6 +153,7 @@ public:
     RtcpHeader (uint8_t packetType);
     RtcpHeader (uint8_t packetType, uint8_t subType);
     virtual ~RtcpHeader ();
+    virtual void Clear ();
 
     static ns3::TypeId GetTypeId ();
     virtual ns3::TypeId GetInstanceTypeId () const;
@@ -233,6 +234,7 @@ public:
 
     CCFeedbackHeader ();
     virtual ~CCFeedbackHeader ();
+    virtual void Clear ();
 
     static ns3::TypeId GetTypeId ();
     virtual ns3::TypeId GetInstanceTypeId () const;
