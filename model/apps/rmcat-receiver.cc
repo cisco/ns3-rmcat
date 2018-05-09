@@ -26,7 +26,7 @@
  */
 
 #include "rmcat-receiver.h"
-#include "rtp-header.h"
+#include "rmcat-constants.h"
 #include "ns3/udp-socket-factory.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
@@ -43,6 +43,9 @@ RmcatReceiver::RmcatReceiver ()
 , m_srcIp{}
 , m_srcPort{}
 , m_socket{NULL}
+, m_header{}
+, m_sendEvent{}
+, m_periodUs{RMCAT_FEEDBACK_PERIOD_US}
 {}
 
 RmcatReceiver::~RmcatReceiver () {}
@@ -53,7 +56,7 @@ void RmcatReceiver::Setup (uint16_t port)
     auto local = InetSocketAddress{Ipv4Address::GetAny (), port};
     auto ret = m_socket->Bind (local);
     NS_ASSERT (ret == 0);
-    m_socket->SetRecvCallback (MakeCallback (&RmcatReceiver::RecvPacket,this));
+    m_socket->SetRecvCallback (MakeCallback (&RmcatReceiver::RecvPacket, this));
 
     m_running = false;
     m_waiting = true;
@@ -63,11 +66,17 @@ void RmcatReceiver::StartApplication ()
 {
     m_running = true;
     m_ssrc = rand ();
+    m_header.SetSendSsrc (m_ssrc);
+    Time tFirst {MicroSeconds(m_periodUs)};
+    m_sendEvent = Simulator::Schedule (tFirst, &RmcatReceiver::SendFeedback, this, true);
 }
 
 void RmcatReceiver::StopApplication ()
 {
     m_running = false;
+    m_waiting = true;
+    m_header.Clear ();
+    Simulator::Cancel (m_sendEvent);
 }
 
 void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
@@ -97,27 +106,39 @@ void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
     }
 
     uint64_t recvTimestampUs = Simulator::Now ().GetMicroSeconds ();
-    SendFeedback (header.GetSequence (), recvTimestampUs);
+    AddFeedback (header.GetSequence (), recvTimestampUs);
 }
 
-void RmcatReceiver::SendFeedback (uint16_t sequence,
-                                  uint64_t recvTimestampUs)
+void RmcatReceiver::AddFeedback (uint16_t sequence,
+                                 uint64_t recvTimestampUs)
 {
-    // TODO (next patch): We need to aggregate feedback information
-    //                    (for the moment, one feedback packet per media packet)
-    //                     - add member of type feedback header
-    //                     - add timeout (100 ms), upon timeout send header
-    //                     - if TOO_LONG, send immediately
-
-    CCFeedbackHeader header{};
-    header.SetSendSsrc (m_ssrc);
-    auto res = header.AddFeedback (m_remoteSsrc, sequence, recvTimestampUs);
+    auto res = m_header.AddFeedback (m_remoteSsrc, sequence, recvTimestampUs);
+    if (res == CCFeedbackHeader::CCFB_TOO_LONG) {
+        SendFeedback (false);
+        res = m_header.AddFeedback (m_remoteSsrc, sequence, recvTimestampUs);
+    }
     NS_ASSERT (res == CCFeedbackHeader::CCFB_NONE);
-    auto packet = Create<Packet> ();
-    packet->AddHeader (header);
-    NS_LOG_INFO ("RmcatReceiver::SendFeedback, " << packet->ToString ());
+}
 
+void RmcatReceiver::SendFeedback (bool reschedule)
+{
+    if (!m_running) {
+        return;
+    }
+
+    //TODO (authors): If packet empty, easiest is to send it as is. Propose to authors
+    auto packet = Create<Packet> ();
+    packet->AddHeader (m_header);
+    NS_LOG_INFO ("RmcatReceiver::SendFeedback, " << packet->ToString ());
     m_socket->SendTo (packet, 0, InetSocketAddress{m_srcIp, m_srcPort});
+
+    m_header.Clear ();
+    m_header.SetSendSsrc (m_ssrc);
+
+    if (reschedule) {
+        Time tNext {MicroSeconds(m_periodUs)};
+        m_sendEvent = Simulator::Schedule (tNext, &RmcatReceiver::SendFeedback, this, true);
+    }
 }
 
 }

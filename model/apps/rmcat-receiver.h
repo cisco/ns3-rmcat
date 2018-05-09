@@ -28,6 +28,7 @@
 #ifndef RMCAT_RECEIVER_H
 #define RMCAT_RECEIVER_H
 
+#include "rtp-header.h"
 #include "ns3/socket.h"
 #include "ns3/application.h"
 
@@ -46,8 +47,9 @@ private:
     virtual void StopApplication ();
 
     void RecvPacket (Ptr<Socket> socket);
-    void SendFeedback (uint16_t sequence,
-                       uint64_t recvTimestamp);
+    void AddFeedback (uint16_t sequence,
+                      uint64_t recvTimestampUs);
+    void SendFeedback (bool reschedule);
 
 private:
     bool m_running;
@@ -57,6 +59,9 @@ private:
     Ipv4Address m_srcIp;
     uint16_t m_srcPort;
     Ptr<Socket> m_socket;
+    CCFeedbackHeader m_header;
+    EventId m_sendEvent;
+    uint64_t m_periodUs;
 };
 
 }
