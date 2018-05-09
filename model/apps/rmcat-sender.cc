@@ -26,7 +26,7 @@
  */
 
 #include "rmcat-sender.h"
-#include "rmcat-header.h"
+#include "rtp-header.h"
 #include "ns3/dummy-controller.h"
 #include "ns3/nada-controller.h"
 #include "ns3/udp-socket-factory.h"
@@ -48,8 +48,9 @@ RmcatSender::RmcatSender ()
 , m_minBw{0}
 , m_maxBw{0}
 , m_paused{false}
-, m_flowId{0}
+, m_srcId{0}
 , m_sequence{0}
+, m_rtpTsOffset{0}
 , m_enqueueEvent{}
 , m_sendEvent{}
 , m_sendOversleepEvent{}
@@ -205,8 +206,10 @@ void RmcatSender::SetRmax (float r)
 
 void RmcatSender::StartApplication ()
 {
-    m_flowId = rand ();
-    m_sequence = 0;
+    m_srcId = rand ();
+    // RTP initial values for sequence number and timestamp SHOULD be random (RFC 3550)
+    m_sequence = rand ();
+    m_rtpTsOffset = rand ();
 
     NS_ASSERT (m_minBw <= m_initBw);
     NS_ASSERT (m_initBw <= m_maxBw);
@@ -289,7 +292,7 @@ void RmcatSender::SendPacket (uint64_t msSlept)
     NS_ASSERT (m_rateShapingBytes >= bytesToSend);
     m_rateShapingBytes -= bytesToSend;
 
-    const auto now = Simulator::Now ().GetMilliSeconds ();
+    const auto nowUs = Simulator::Now ().GetMicroSeconds ();
 
     NS_LOG_INFO ("RmcatSender::SendPacket, packet dequeued, packet length: " << bytesToSend
                  << ", buffer size: " << m_rateShapingBuf.size ()
@@ -299,9 +302,9 @@ void RmcatSender::SendPacket (uint64_t msSlept)
     auto oversleepMs = msSlept * (rand () % 100) / 10000;
     Time tOver{MilliSeconds (oversleepMs)};
     m_sendOversleepEvent = Simulator::Schedule (tOver, &RmcatSender::SendOverSleep,
-                                                this, m_sequence, bytesToSend);
+                                                this, m_sequence, nowUs, bytesToSend);
 
-    m_controller->processSendPacket (now, m_sequence++, bytesToSend);
+    m_controller->processSendPacket (nowUs / 1000, m_sequence++, bytesToSend);
 
     // schedule next sendData
     auto msToNextSentPacketD = static_cast<double> (bytesToSend) * 8. * 1000. / m_rSend;
@@ -309,7 +312,7 @@ void RmcatSender::SendPacket (uint64_t msSlept)
 
     if (!USE_BUFFER || m_rateShapingBuf.size () == 0) {
         // Buffer became empty
-        m_nextSendTstmp = now + msToNextSentPacket;
+        m_nextSendTstmp = nowUs / 1000 + msToNextSentPacket;
         return;
     }
 
@@ -317,14 +320,16 @@ void RmcatSender::SendPacket (uint64_t msSlept)
     m_sendEvent = Simulator::Schedule (tNext, &RmcatSender::SendPacket, this, msToNextSentPacket);
 }
 
-void RmcatSender::SendOverSleep (uint32_t seq, uint32_t bytesToSend) {
+void RmcatSender::SendOverSleep (uint16_t seq, int64_t nowUs, uint32_t bytesToSend) {
 
-    ns3::MediaHeader header;
-    header.flow_id = m_flowId;
-    header.sequence = seq;
-    header.packet_size = bytesToSend;
-    const auto now = Simulator::Now ().GetMilliSeconds ();
-    header.send_tstmp = now;
+    ns3::RtpHeader header{};
+    header.m_payloadType = 96; // Dynamic payload type, according to RFC 3551
+    header.m_sequence = seq;
+    NS_ASSERT (nowUs >= 0);
+    // Most video payload types in RFC 3551, Table 5, use a 90 KHz clock
+    // Therefore, assuming 90 KHz clock for RTP timestamps
+    header.m_timestamp = m_rtpTsOffset + uint32_t (nowUs * 90 / 1000);
+    header.m_ssrc = m_srcId;
 
     auto packet = Create<Packet> (bytesToSend);
     packet->AddHeader (header);
@@ -348,13 +353,13 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
     FeedbackHeader header;
     NS_LOG_INFO ("RmcatSender::RecvPacket, " << Packet->ToString ());
     Packet->RemoveHeader (header);
-    NS_ASSERT (header.flow_id == m_flowId);
+    NS_ASSERT (header.flow_id == m_srcId);
 
     const auto now = Simulator::Now ().GetMilliSeconds ();
     NS_ASSERT (header.receive_tstmp <= now);
 
     m_controller->processFeedback (now,
-                                   header.sequence,
+                                   uint16_t (header.sequence), //TODO Still using old feedback header
                                    header.receive_tstmp);
     CalcBufferParams (now);
 }

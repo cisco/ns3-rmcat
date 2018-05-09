@@ -146,7 +146,7 @@ void NadaController::reset() {
  * TODO: (deferred) Add support for ECN marking
  */
 bool NadaController::processFeedback(uint64_t now,
-                                     uint32_t sequence,
+                                     uint16_t sequence,
                                      uint64_t rxTimestamp,
                                      uint8_t ecn) {
     /* First of all, call the superclass */
@@ -243,7 +243,7 @@ void NadaController::updateMetrics(uint64_t now) {
     }
 
     float avgInt;
-    uint32_t currentInt;
+    uint16_t currentInt;
     bool avgIntOK = getLossIntervalInfo(avgInt, currentInt);
     m_lossesSeen = avgIntOK;
     if (avgIntOK) {

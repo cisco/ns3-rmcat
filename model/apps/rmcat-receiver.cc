@@ -26,7 +26,7 @@
  */
 
 #include "rmcat-receiver.h"
-#include "rmcat-header.h"
+#include "rtp-header.h"
 #include "ns3/udp-socket-factory.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
@@ -69,19 +69,19 @@ void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
     Address remoteAddr;
     auto packet = m_socket->RecvFrom (remoteAddr);
     NS_ASSERT (packet);
-    MediaHeader header;
+    RtpHeader header;
     NS_LOG_INFO ("RmcatReceiver::RecvPacket, " << packet->ToString ());
     packet->RemoveHeader (header);
     auto srcIp = InetSocketAddress::ConvertFrom (remoteAddr).GetIpv4 ();
     auto srcPort = InetSocketAddress::ConvertFrom (remoteAddr).GetPort ();
     if (m_waiting) {
         m_waiting = false;
-        m_srcId = header.flow_id;
+        m_srcId = header.m_ssrc;
         m_srcIp = srcIp;
         m_srcPort = srcPort;
     } else {
         // Only one flow supported
-        NS_ASSERT (m_srcId == header.flow_id);
+        NS_ASSERT (m_srcId == header.m_ssrc);
         NS_ASSERT (m_srcIp == srcIp);
         NS_ASSERT (m_srcPort == srcPort);
     }
@@ -90,15 +90,15 @@ void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
     //                 (for the moment, one feedback packet per media packet)
 
     auto recvTimestamp = Simulator::Now ().GetMilliSeconds ();
-    SendFeedback (header.sequence, recvTimestamp);
+    SendFeedback (header.m_sequence, recvTimestamp);
 }
 
-void RmcatReceiver::SendFeedback (uint32_t sequence,
+void RmcatReceiver::SendFeedback (uint16_t sequence,
                                   uint64_t recvTimestamp)
 {
     FeedbackHeader header;
     header.flow_id = m_srcId;
-    header.sequence = sequence;
+    header.sequence = uint32_t (sequence); //TODO: cast to uint32_t as we're still using old feedback header
     header.receive_tstmp = recvTimestamp;
 
     auto packet = Create<Packet> ();

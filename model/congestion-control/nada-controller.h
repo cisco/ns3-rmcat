@@ -66,7 +66,7 @@ public:
 
     /** NADA's implementation of the #processFeedback API */
     virtual bool processFeedback(uint64_t now,
-                                 uint32_t sequence,
+                                 uint16_t sequence,
                                  uint64_t rxTimestamp,
                                  uint8_t ecn=0);
 
@@ -182,7 +182,7 @@ private:
     float m_Xprev;  /**< previous value of the aggregated congestion signal (x_prev in rmcat-nada), in ms */
     float m_RecvR;  /**< updated receiving rate in bps */
     float m_avgInt; /**< Average inter-loss interval in packets, according to RFC 5348 */
-    uint32_t m_currInt; /**< Most recent (currently growing) inter-loss interval in packets; called I_0 in RFC 5348 */
+    uint16_t m_currInt; /**< Most recent (currently growing) inter-loss interval in packets; called I_0 in RFC 5348 */
     bool m_lossesSeen; /**< Whether packet losses/reorderings have been detected so far */
 };
 

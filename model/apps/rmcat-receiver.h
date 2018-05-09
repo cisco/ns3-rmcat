@@ -45,7 +45,7 @@ private:
     virtual void StopApplication ();
 
     void RecvPacket (Ptr<Socket> socket);
-    void SendFeedback (uint32_t sequence,
+    void SendFeedback (uint16_t sequence,
                        uint64_t recvTimestamp);
 
 private:

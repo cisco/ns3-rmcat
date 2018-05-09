@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2016-2017 Cisco Systems, Inc.                                    *
+ * Copyright 2016-2018 Cisco Systems, Inc.                                    *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -17,7 +17,7 @@
 
 /**
  * @file
- * Common header interface for rmcat ns3 module.
+ * Header interface of RTP packets (RFC 3550) for ns3-rmcat.
  *
  * @version 0.1.1
  * @author Jiantao Fu
@@ -25,33 +25,36 @@
  * @author Xiaoqing Zhu
  */
 
-#ifndef RMCAT_HEADER_H
-#define RMCAT_HEADER_H
+#ifndef RTP_HEADER_H
+#define RTP_HEADER_H
 
 #include "ns3/header.h"
 #include "ns3/type-id.h"
 
 namespace ns3 {
 
-// TODO (deferred) conform to RTP header formatting
-//
-//---------------------- MEDIA HEADER -----------------------------//
+//-------------------- RTP HEADER (RFC 3550) ----------------------//
 //   0                   1                   2                   3
 //   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                           flow_id                             |
+//  |V=2|P|X|  CC   |M|     PT      |       sequence number         |
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                          sequence                             |
+//  |                           timestamp                           |
 //  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                     send t(ime)st(a)mp  (1)                   |
-//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                     send t(ime)st(a)mp  (2)                   |
-//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//  |                          packet size                          |
+//  |           synchronization source (SSRC) identifier            |
 //  +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-class MediaHeader : public ns3::Header
+//  |            contributing source (CSRC) identifiers             |
+//  |                             ....                              |
+//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+#define RTP_VERSION    2
+
+class RtpHeader : public ns3::Header
 {
 public:
+    RtpHeader ();
+    virtual ~RtpHeader ();
+
     static ns3::TypeId GetTypeId ();
     virtual ns3::TypeId GetInstanceTypeId () const;
     virtual uint32_t GetSerializedSize () const;
@@ -59,10 +62,19 @@ public:
     virtual uint32_t Deserialize (ns3::Buffer::Iterator start);
     virtual void Print (std::ostream &os) const;
 
-    uint32_t flow_id;
-    uint32_t sequence;
-    uint64_t send_tstmp;
-    uint32_t packet_size;
+    bool m_padding;
+    bool m_extension;
+    bool m_marker;
+    uint8_t m_payloadType;
+    uint16_t m_sequence;
+    uint32_t m_timestamp;
+    uint32_t m_ssrc;
+    std::vector<uint32_t> m_csrc;
+
+protected:
+    static void SetBit (uint8_t& val, uint8_t pos, bool bit);
+    static bool GetBit (uint8_t val, uint8_t pos);
+
 };
 
 
@@ -100,4 +112,4 @@ public:
 
 }
 
-#endif /* RMCAT_HEADER_H */
+#endif /* RTP_HEADER_H */

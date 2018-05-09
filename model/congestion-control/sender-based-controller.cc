@@ -136,7 +136,7 @@ void SenderBasedController::updateInterLossData(const PacketRecord& packet) {
 }
 
 bool SenderBasedController::processSendPacket(uint64_t txTimestamp,
-                                              uint32_t sequence,
+                                              uint16_t sequence,
                                               uint32_t size) {
     if (m_firstSend) {
         m_lastSequence = sequence - 1;
@@ -173,7 +173,7 @@ bool SenderBasedController::processSendPacket(uint64_t txTimestamp,
 }
 
 bool SenderBasedController::processFeedback(uint64_t now,
-                                            uint32_t sequence,
+                                            uint16_t sequence,
                                             uint64_t rxTimestamp,
                                             uint8_t ecn) {
     if (lessThan(m_lastSequence, sequence)) {
@@ -347,7 +347,7 @@ bool SenderBasedController::getPktLossInfo(uint32_t& nLoss, float& plr) const {
     }
 
     // This will wrap properly
-    const uint32_t seqSpan = 1u + m_packetHistory.back().sequence
+    const uint16_t seqSpan = 1u + m_packetHistory.back().sequence
                              - m_packetHistory.front().sequence;
     assert(seqSpan >= m_packetHistory.size());
     nLoss = seqSpan - m_packetHistory.size();
@@ -386,7 +386,7 @@ bool SenderBasedController::getCurrentRecvRate(float& rrateBps) const {
 }
 
 
-bool SenderBasedController::getLossIntervalInfo(float& avgInterval, uint32_t& currentInterval) const {
+bool SenderBasedController::getLossIntervalInfo(float& avgInterval, uint16_t& currentInterval) const {
     if (!m_ilState.initialized) {
         return false; // No losses yet --> no intervals
     }

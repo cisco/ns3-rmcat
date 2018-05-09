@@ -58,7 +58,7 @@ void DummyController::reset() {
 }
 
 bool DummyController::processFeedback(uint64_t now,
-                                      uint32_t sequence,
+                                      uint16_t sequence,
                                       uint64_t rxTimestamp,
                                       uint8_t ecn) {
     // First of all, call the superclass
