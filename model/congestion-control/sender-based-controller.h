@@ -93,17 +93,17 @@ public:
     /** To avoid future complexity and defects, we make the following
      *  assumptions regarding wrapping of unsigned integers:
      *    - sequences, uint16_t, can wrap (just like TCP)
-     *    - timestamps, uint64_t, can wrap (despite being 64 bits long)
-     *    - delays, uint64_t, can wrap (easily), as they are obtained from
-     *      subtraction of timestamps obtained at different endpoints,
+     *    - timestamps (microseconds), uint64_t, can wrap (despite being 64 bits long)
+     *    - delays (microseconds), uint64_t, can wrap (easily), as they are
+     *      obtained from subtraction of timestamps obtained at different endpoints,
      *      which may have non-synchronized clocks.
      */
     struct PacketRecord {
         uint16_t sequence;
-        uint64_t txTimestamp;
+        uint64_t txTimestampUs;
         uint32_t size;
-        uint64_t owd;
-        uint64_t rtt;
+        uint64_t owdUs;
+        uint64_t rttUs;
     };
 
     /** Class constructor */
@@ -176,7 +176,8 @@ public:
      * the superclass's method to ensure the proper operation of the common
      * logic implemented by the superclass
      *
-     * @param [in] txTimestamp The time at which the packet is sent
+     * @param [in] txTimestampUs The time (in microseconds) at which the packet
+     *                           is sent
      * @param [in] sequence The sequence number in the packet, which will be
      *                      used to identify the corresponding feedback from
      *                      the receiver endpoint
@@ -192,7 +193,7 @@ public:
      *       - asserting (crashing): this means there is a bug in the
      *                               function's logic
      */
-    virtual bool processSendPacket(uint64_t txTimestamp,
+    virtual bool processSendPacket(uint64_t txTimestampUs,
                                    uint16_t sequence,
                                    uint32_t size); // in Bytes
 
@@ -205,11 +206,11 @@ public:
      * the superclass's method to ensure the proper operation of the common
      * logic implemented by the superclass
      *
-     * @param [in] now The time at which this function is called
+     * @param [in] nowUs The time (in microseconds) at which this function is called
      * @param [in] sequence The sequence number of the media packet that this
      *                      feedback refers to
-     * @param [in] rxTimestamp The time at which this the media packet was
-     *                         received at the receiver endpoint
+     * @param [in] rxTimestampUs The time (in microseconds) at which this the media
+     *                           packet was received at the receiver endpoint
      * @param [in] ecn The Explicit Congestion Notification (ECN) marking value
      *                 (specified in rfc3168), as seen by the receiver endpoint
      * @retval true if all went well, false if there was an error
@@ -221,21 +222,21 @@ public:
      *       - asserting (crashing): this means there is a bug in the
      *                               function's logic
      */
-    virtual bool processFeedback(uint64_t now,
+    virtual bool processFeedback(uint64_t nowUs,
                                  uint16_t sequence,
-                                 uint64_t rxTimestamp,
+                                 uint64_t rxTimestampUs,
                                  uint8_t ecn=0);
 
     /**
      * The sender application will call this function every time it needs to
      * know what is the current bandwidth as estimated by the congestion
      * controller. The bandwidth information is typically used to have the
-     * media codecs adapted to the current (estimated) available bandwidth
+     * media codecs adapt to the current (estimated) available bandwidth
      *
-     * @param [in] now The time at which this function is called
+     * @param [in] nowUs The time at which this function is called, in microseconds
      * @retval the congestion controller's bandwidth estimation, in bps
      */
-    virtual float getBandwidth(uint64_t now) const =0;
+    virtual float getBandwidth(uint64_t nowUs) const =0;
 
 protected:
     /** A "less than" operator for unsigned integers that supports wrapping */
@@ -247,20 +248,20 @@ protected:
     }
 
     /**
-     * Set the history length, in ms, for calculating metrics. Information from
-     * packets sent more than lenMs milliseconds ago will be garbage collected
-     * and thus not used for metric calculation
+     * Set the history length, in microseconds, for calculating metrics.
+     * Information from packets sent more than lenUs microseconds ago will be
+     * garbage collected and thus not used for metric calculation
      *
-     * @param [in] lenMs New history length (in ms)
+     * @param [in] lenUs New history length (in microseconds)
      */
-    void setHistoryLength(uint64_t lenMs);
+    void setHistoryLength(uint64_t lenUs);
 
     /**
-     * Get the current history length, in ms. Any packet that was sent more
-     * than this length milliseconds in the past is garbage collected and is
-     * not used for calculating any metric
+     * Get the current history length, in microseconds. Any packet that was
+     * sent more than this length microseconds in the past is garbage collected
+     * and is not used for calculating any metric
      *
-     * @retval The current history length (in ms)
+     * @retval The current history length (in microseconds)
      */
     uint64_t getHistoryLength() const;
 
@@ -281,20 +282,20 @@ protected:
     /*
      * Calculate current queuing delay (qdelay)
      *
-     * @param [out] qdelay Queuing delay during current history length
+     * @param [out] qdelayUs Queuing delay in microseconds during current history length
      * @retval False if the current history is empty (output parameter is not
      *         valid). True otherwise
      */
-    bool getCurrentQdelay(uint64_t& qdelay) const;
+    bool getCurrentQdelay(uint64_t& qdelayUs) const;
 
     /**
      * Calculate current round trip time (rtt)
      *
-     * @param [out] rtt Round trip time during current history length
+     * @param [out] rttUs Round trip time in microseconds during current history length
      * @retval False if the current history is empty (output parameter is not
      *         valid). True otherwise
      */
-    bool getCurrentRTT(uint64_t& rtt) const;
+    bool getCurrentRTT(uint64_t& rttUs) const;
 
     /**
      * Calculate current info on packet losses
@@ -339,9 +340,9 @@ protected:
     uint16_t m_lastSequence; /**< sequence of the last packet sent */
     /**
      * Estimation of the network propagation delay, plus clock difference
-     * between sender and receiver endpoints
+     * between sender and receiver endpoints. In microseconds
      */
-    uint64_t m_baseDelay;
+    uint64_t m_baseDelayUs;
     /**
      * Sent packets for which feedback has not been received yet
      */
@@ -369,7 +370,7 @@ protected:
     InterLossState m_ilState;
 
 private:
-    uint64_t m_historyLengthMs; // in ms
+    uint64_t m_historyLengthUs; // in microseconds
 
     void setDefaultId();
     void updateInterLossData(const PacketRecord& packet);

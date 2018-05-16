@@ -62,10 +62,10 @@ private:
     virtual void StopApplication ();
 
     void EnqueuePacket ();
-    void SendPacket (uint64_t msSlept);
+    void SendPacket (uint64_t usSlept);
     void SendOverSleep (uint32_t bytesToSend);
     void RecvPacket (Ptr<Socket> socket);
-    void CalcBufferParams (uint64_t now);
+    void CalcBufferParams (uint64_t nowUs);
 
 private:
     std::shared_ptr<syncodecs::Codec> m_codec;
@@ -88,7 +88,7 @@ private:
     double m_rSend; //bps
     std::deque<uint32_t> m_rateShapingBuf;
     uint32_t m_rateShapingBytes;
-    uint64_t m_nextSendTstmp;
+    uint64_t m_nextSendTstmpUs;
 };
 
 }

@@ -32,9 +32,9 @@ namespace rmcat {
 
 DummyController::DummyController() :
     SenderBasedController{},
-    m_lastTimeCalc{0},
+    m_lastTimeCalcUs{0},
     m_lastTimeCalcValid{false},
-    m_Qdelay{0},
+    m_QdelayUs{0},
     m_ploss{0},
     m_plr{0.f},
     m_RecvR{0.} {}
@@ -46,10 +46,10 @@ void DummyController::setCurrentBw(float newBw) {
 }
 
 void DummyController::reset() {
-    m_lastTimeCalc = 0;
+    m_lastTimeCalcUs = 0;
     m_lastTimeCalcValid = false;
 
-    m_Qdelay = 0;
+    m_QdelayUs = 0;
     m_ploss = 0;
     m_plr = 0.f;
     m_RecvR = 0.;
@@ -57,37 +57,37 @@ void DummyController::reset() {
     SenderBasedController::reset();
 }
 
-bool DummyController::processFeedback(uint64_t now,
+bool DummyController::processFeedback(uint64_t nowUs,
                                       uint16_t sequence,
-                                      uint64_t rxTimestamp,
+                                      uint64_t rxTimestampUs,
                                       uint8_t ecn) {
     // First of all, call the superclass
-    const bool res = SenderBasedController::processFeedback(now, sequence,
-                                                            rxTimestamp, ecn);
-    const uint64_t calcIntervalMs = 200;
+    const bool res = SenderBasedController::processFeedback(nowUs, sequence,
+                                                            rxTimestampUs, ecn);
+    const uint64_t calcIntervalUs = 200 * 1000;
     if (m_lastTimeCalcValid) {
-        assert(lessThan(m_lastTimeCalc, now + 1));
-        if (now - m_lastTimeCalc >= calcIntervalMs) {
-            updateMetrics(now);
-            logStats(now);
-            m_lastTimeCalc = now;
+        assert(lessThan(m_lastTimeCalcUs, nowUs + 1));
+        if (nowUs - m_lastTimeCalcUs >= calcIntervalUs) {
+            updateMetrics();
+            logStats(nowUs);
+            m_lastTimeCalcUs = nowUs;
         }
     } else {
-        m_lastTimeCalc = now;
+        m_lastTimeCalcUs = nowUs;
         m_lastTimeCalcValid = true;
     }
     return res;
 }
 
-float DummyController::getBandwidth(uint64_t now) const {
+float DummyController::getBandwidth(uint64_t nowUs) const {
 
     return m_initBw;
 }
 
-void DummyController::updateMetrics(uint64_t now) {
-    uint64_t qdelay;
-    bool qdelayOK = getCurrentQdelay(qdelay);
-    if (qdelayOK) m_Qdelay = qdelay;
+void DummyController::updateMetrics() {
+    uint64_t qdelayUs;
+    bool qdelayOK = getCurrentQdelay(qdelayUs);
+    if (qdelayOK) m_QdelayUs = qdelayUs;
 
     float rrate;
     bool rrateOK = getCurrentRecvRate(rrate);
@@ -102,16 +102,16 @@ void DummyController::updateMetrics(uint64_t now) {
     }
 }
 
-void DummyController::logStats(uint64_t now) const {
+void DummyController::logStats(uint64_t nowUs) const {
 
     std::ostringstream os;
     os << std::fixed;
     os.precision(RMCAT_LOG_PRINT_PRECISION);
 
     os  << " algo:dummy " << m_id
-        << " ts: "     << now
+        << " ts: "     << (nowUs / 1000)
         << " loglen: " << m_packetHistory.size()
-        << " qdel: "   << m_Qdelay
+        << " qdel: "   << (m_QdelayUs / 1000)
         << " ploss: "  << m_ploss
         << " plr: "    << m_plr
         << " rrate: "  << m_RecvR

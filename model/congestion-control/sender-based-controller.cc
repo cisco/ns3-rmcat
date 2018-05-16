@@ -36,8 +36,8 @@
 namespace rmcat {
 
 const int MIN_PACKET_LOGLEN = 5;             /**< minimum # of packets in log for stats to be meaningful */
-const uint64_t MAX_INTER_PACKET_TIME = 500;  /**< maximum interval between packets, in ms */
-const uint64_t DEFAULT_HISTORY_LENGTH = 500; /**< default time window for logging history of packets, in ms */
+const uint64_t MAX_INTER_PACKET_TIME_US = 500 * 1000;  /**< maximum interval between packets, in microseconds */
+const uint64_t DEFAULT_HISTORY_LENGTH_US = 500 * 1000; /**< default time window for logging history of packets, in microseconds */
 const float RMCAT_CC_DEFAULT_RINIT = 150000.; /**< Initial BW in bps: 150Kbps */
 const float RMCAT_CC_DEFAULT_RMIN = 150000.;  /**< in bps: 150Kbps */
 const float RMCAT_CC_DEFAULT_RMAX = 1500000.; /**< in bps: 1.5Mbps */
@@ -60,7 +60,7 @@ void SenderBasedController::setDefaultId() {
 SenderBasedController::SenderBasedController()
 : m_firstSend{true},
   m_lastSequence{0},
-  m_baseDelay{0},
+  m_baseDelayUs{0},
   m_inTransitPackets{},
   m_packetHistory{},
   m_pktSizeSum{0},
@@ -70,7 +70,7 @@ SenderBasedController::SenderBasedController()
   m_maxBw{RMCAT_CC_DEFAULT_RMAX},
   m_logCallback{NULL},
   m_ilState{},
-  m_historyLengthMs{DEFAULT_HISTORY_LENGTH} {
+  m_historyLengthUs{DEFAULT_HISTORY_LENGTH_US} {
       setDefaultId();
 }
 
@@ -99,7 +99,7 @@ void SenderBasedController::setLogCallback(logCallback f) {
 void SenderBasedController::reset() {
     m_firstSend = true;
     m_lastSequence = 0;
-    m_baseDelay = 0;
+    m_baseDelayUs = 0;
     m_inTransitPackets.clear();
     m_packetHistory.clear();
     m_pktSizeSum = 0;
@@ -108,7 +108,7 @@ void SenderBasedController::reset() {
     m_maxBw = RMCAT_CC_DEFAULT_RMAX;
     m_logCallback = NULL;
     m_ilState = InterLossState{};
-    m_historyLengthMs = DEFAULT_HISTORY_LENGTH;
+    m_historyLengthUs = DEFAULT_HISTORY_LENGTH_US;
     setDefaultId();
 }
 
@@ -135,7 +135,7 @@ void SenderBasedController::updateInterLossData(const PacketRecord& packet) {
     m_ilState.initialized = true;
 }
 
-bool SenderBasedController::processSendPacket(uint64_t txTimestamp,
+bool SenderBasedController::processSendPacket(uint64_t txTimestampUs,
                                               uint16_t sequence,
                                               uint32_t size) {
     if (m_firstSend) {
@@ -154,16 +154,16 @@ bool SenderBasedController::processSendPacket(uint64_t txTimestamp,
 
     // record sent packets in local record
     m_inTransitPackets.push_back(PacketRecord{m_lastSequence,
-                                              txTimestamp,
+                                              txTimestampUs,
                                               size,
                                               0,
                                               0});
     // Memory safety: timestamps of in-transit packets must be
     //  within (10 * MAX_INTER_PACKET_TIME)
     while (true) {
-        const uint64_t firstTimestamp = m_inTransitPackets.front().txTimestamp;
-        if (lessThan(firstTimestamp + 10 * MAX_INTER_PACKET_TIME,
-                     txTimestamp)) {
+        const uint64_t firstTimestampUs = m_inTransitPackets.front().txTimestampUs;
+        if (lessThan(firstTimestampUs + 10 * MAX_INTER_PACKET_TIME_US,
+                     txTimestampUs)) {
             m_inTransitPackets.pop_front();
         } else {
             break;
@@ -172,9 +172,9 @@ bool SenderBasedController::processSendPacket(uint64_t txTimestamp,
     return true;
 }
 
-bool SenderBasedController::processFeedback(uint64_t now,
+bool SenderBasedController::processFeedback(uint64_t nowUs,
                                             uint16_t sequence,
-                                            uint64_t rxTimestamp,
+                                            uint64_t rxTimestampUs,
                                             uint8_t ecn) {
     if (lessThan(m_lastSequence, sequence)) {
         std::cerr << "SenderBasedController::ProcessFeedback,"
@@ -215,17 +215,17 @@ bool SenderBasedController::processFeedback(uint64_t now,
 
     if (!m_packetHistory.empty()) {
         const PacketRecord& lastPacket = m_packetHistory.back();
-        if (lessThan(packet.txTimestamp, lastPacket.txTimestamp)) {
+        if (lessThan(packet.txTimestampUs, lastPacket.txTimestampUs)) {
             std::cerr << "SenderBasedController::ProcessFeedback,"
                       << " sequence: " << sequence
-                      << " has decreasing timestamp " << packet.txTimestamp
+                      << " has decreasing timestamp " << packet.txTimestampUs
                       << " w.r.t. sequence " << lastPacket.sequence
-                      << " with timestamp " << lastPacket.txTimestamp
+                      << " with timestamp " << lastPacket.txTimestampUs
                       << std::endl;
             return false;
         }
-        if (lessThan(lastPacket.txTimestamp + MAX_INTER_PACKET_TIME,
-                     packet.txTimestamp)) {
+        if (lessThan(lastPacket.txTimestampUs + MAX_INTER_PACKET_TIME_US,
+                     packet.txTimestampUs)) {
             // It's been too long without receiving any feedback packet
             // Packet history is obsolete
             m_packetHistory.clear();
@@ -234,15 +234,15 @@ bool SenderBasedController::processFeedback(uint64_t now,
     }
 
     // Sanity check
-    assert(packet.owd == 0);
-    assert(packet.rtt == 0);
+    assert(packet.owdUs == 0);
+    assert(packet.rttUs == 0);
 
     // This subtraction can wrap if clocks aren't synchronized, but it's OK
-    packet.owd = rxTimestamp - packet.txTimestamp;
-    packet.rtt = now - packet.txTimestamp;
+    packet.owdUs = rxTimestampUs - packet.txTimestampUs;
+    packet.rttUs = nowUs - packet.txTimestampUs;
 
-    if (m_packetHistory.empty() || lessThan(packet.owd, m_baseDelay)) {
-        m_baseDelay = packet.owd;
+    if (m_packetHistory.empty() || lessThan(packet.owdUs, m_baseDelayUs)) {
+        m_baseDelayUs = packet.owdUs;
     }
 
     updateInterLossData(packet);
@@ -252,10 +252,10 @@ bool SenderBasedController::processFeedback(uint64_t now,
 
     // Garbage collect history to keep its length within limits
     while (true) {
-        const uint64_t lastTimestamp = m_packetHistory.back().txTimestamp;
-        const uint64_t firstTimestamp = m_packetHistory.front().txTimestamp;
-        assert (!lessThan(lastTimestamp, firstTimestamp));
-        if (lessThan(lastTimestamp, firstTimestamp + m_historyLengthMs)) {
+        const uint64_t lastTimestampUs = m_packetHistory.back().txTimestampUs;
+        const uint64_t firstTimestampUs = m_packetHistory.front().txTimestampUs;
+        assert (!lessThan(lastTimestampUs, firstTimestampUs));
+        if (lessThan(lastTimestampUs, firstTimestampUs + m_historyLengthUs)) {
             break;
         }
         const uint32_t firstSize = m_packetHistory.front().size;
@@ -266,19 +266,19 @@ bool SenderBasedController::processFeedback(uint64_t now,
     return true;
 }
 
-void SenderBasedController::setHistoryLength(uint64_t lenMs) {
-    m_historyLengthMs = lenMs;
+void SenderBasedController::setHistoryLength(uint64_t lenUs) {
+    m_historyLengthUs = lenUs;
 }
 
 uint64_t SenderBasedController::getHistoryLength() const {
-    return m_historyLengthMs;
+    return m_historyLengthUs;
 }
 
 // These functions calculate different metrics based on the feedback received.
 // Although they could be considered part of the NADA algorithm, we have
 // defined them in the superclass because they could also be useful to other
 // algorithms
-bool SenderBasedController::getCurrentQdelay(uint64_t& qdelay) const {
+bool SenderBasedController::getCurrentQdelay(uint64_t& qdelayUs) const {
     // 15-tab minimum filtering
     const size_t ntab = 15;
     if (m_packetHistory.empty()) {
@@ -288,26 +288,26 @@ bool SenderBasedController::getCurrentQdelay(uint64_t& qdelay) const {
         return false;
     }
 
-    uint64_t qDelayMin;
+    uint64_t qDelayMinUs = 0;
     size_t iter = 0;
     for (auto rit = m_packetHistory.rbegin();
             rit != m_packetHistory.rend();
             ++rit) {
-        const uint64_t qDelayCurrent = rit->owd - m_baseDelay;
+        const uint64_t qDelayCurrentUs = rit->owdUs - m_baseDelayUs;
         if (iter > 0) {
-            qDelayMin = std::min(qDelayMin, qDelayCurrent);
+            qDelayMinUs = std::min(qDelayMinUs, qDelayCurrentUs);
         } else {
-            qDelayMin = qDelayCurrent;
+            qDelayMinUs = qDelayCurrentUs;
         }
         if (++iter >= ntab) {
             break;
         }
     }
-    qdelay = qDelayMin;
+    qdelayUs = qDelayMinUs;
     return true;
 }
 
-bool SenderBasedController::getCurrentRTT(uint64_t& rtt) const {
+bool SenderBasedController::getCurrentRTT(uint64_t& rttUs) const {
     // 15-tab minimum filtering
     const size_t ntab = 15;
     if (m_packetHistory.empty()) {
@@ -317,23 +317,23 @@ bool SenderBasedController::getCurrentRTT(uint64_t& rtt) const {
         return false;
     }
 
-    uint64_t rttMin = 0;
+    uint64_t rttMinUs = 0;
     size_t iter = 0;
     for (auto rit = m_packetHistory.rbegin();
             rit != m_packetHistory.rend();
             ++rit) {
-        const uint64_t rttCurrent = rit->rtt;
+        const uint64_t rttCurrentUs = rit->rttUs;
         if (iter > 0) {
-            rttMin = std::min(rttMin, rttCurrent);
+            rttMinUs = std::min(rttMinUs, rttCurrentUs);
         } else {
-            rttMin = rttCurrent;
+            rttMinUs = rttCurrentUs;
         }
         if (++iter >= ntab) {
             break;
         }
     }
 
-    rtt = rttMin;
+    rttUs = rttMinUs;
     return true;
 }
 
@@ -366,12 +366,12 @@ bool SenderBasedController::getCurrentRecvRate(float& rrateBps) const {
 
     const PacketRecord& front = m_packetHistory.front();
     const PacketRecord& back = m_packetHistory.back();
-    const uint64_t firstRx = front.txTimestamp + front.owd;
-    const uint64_t lastRx = back.txTimestamp + back.owd;
-    assert(lessThan(firstRx, lastRx + 1));
-    uint64_t timeSpan = lastRx - firstRx;
+    const uint64_t firstRxUs = front.txTimestampUs + front.owdUs;
+    const uint64_t lastRxUs = back.txTimestampUs + back.owdUs;
+    assert(lessThan(firstRxUs, lastRxUs + 1));
+    uint64_t timeSpanUs = lastRxUs - firstRxUs;
 
-    if (timeSpan == 0) {
+    if (timeSpanUs == 0) {
         std::cerr << "SenderBasedController::getCurrentRecvRate,"
                   << " cannot calculate receive rate,"
                   << " all packets were received simultaneously" << std::endl;
@@ -381,7 +381,7 @@ bool SenderBasedController::getCurrentRecvRate(float& rrateBps) const {
     // Technically, the first packet is out of the calculated time span
     assert(front.size <= m_pktSizeSum);
     const uint32_t bytes = m_pktSizeSum - front.size;
-    rrateBps = float(bytes * 8) * 1000.f / float(timeSpan);
+    rrateBps = float(bytes * 8) * 1000.f * 1000.f / float(timeSpanUs);
     return true;
 }
 

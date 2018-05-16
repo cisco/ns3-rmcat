@@ -55,15 +55,15 @@ const float NADA_PARAM_TAU = 500.; /**< Upper bound of RTT (in ms) in gradual ra
 
 /**
  * Target interval for receiving feedback from receiver
- * or update rate calculation (in ms)
+ * or update rate calculation (in microseconds)
  */
-const uint64_t NADA_PARAM_DELTA = 100;
+const uint64_t NADA_PARAM_DELTA_US = 100 * 1000;
 
 /* default parameters for accelerated ramp-up */
 
-/**  Threshold for allowed queuing delay build up at receiver during accelerated ramp-up mode */
-const uint64_t NADA_PARAM_QEPS = 10;
-const uint64_t NADA_PARAM_DFILT = 120; /**< Bound on filtering delay (in ms) */
+/**  Threshold (microseconds) for allowed queuing delay build up at receiver during accelerated ramp-up mode */
+const uint64_t NADA_PARAM_QEPS_US = 10 * 1000;
+const uint64_t NADA_PARAM_DFILT_US = 120 * 1000; /**< Bound on filtering delay (in microseconds) */
 /** Upper bound on rate increase ratio in accelerated ramp-up mode (dimensionless) */
 const float NADA_PARAM_GAMMA_MAX = 0.5;
 /** Upper bound on self-inflicted queuing delay during ramp up (in ms) */
@@ -99,11 +99,11 @@ NadaController::NadaController() :
     m_ploss{0},
     m_plr{0.f},
     m_warpMode{false},
-    m_lastTimeCalc{0},
+    m_lastTimeCalcUs{0},
     m_lastTimeCalcValid{false},
     m_currBw{m_initBw},
-    m_Qdelay{0},
-    m_Rtt{0},
+    m_QdelayUs{0},
+    m_RttUs{0},
     m_Xcurr{0.f},
     m_Xprev{0.f},
     m_RecvR{0.f},
@@ -125,11 +125,11 @@ void NadaController::reset() {
     m_ploss = 0;
     m_plr = 0.f;
     m_warpMode = false;
-    m_lastTimeCalc = 0;
+    m_lastTimeCalcUs = 0;
     m_lastTimeCalcValid = false;
     m_currBw = m_initBw;
-    m_Qdelay = 0;
-    m_Rtt = 0;
+    m_QdelayUs = 0;
+    m_RttUs = 0;
     m_Xcurr = 0.f;
     m_Xprev = 0.f;
     m_RecvR = 0.f;
@@ -145,14 +145,14 @@ void NadaController::reset() {
  *
  * TODO: (deferred) Add support for ECN marking
  */
-bool NadaController::processFeedback(uint64_t now,
+bool NadaController::processFeedback(uint64_t nowUs,
                                      uint16_t sequence,
-                                     uint64_t rxTimestamp,
+                                     uint64_t rxTimestampUs,
                                      uint8_t ecn) {
     /* First of all, call the superclass */
-    if (!SenderBasedController::processFeedback(now,
+    if (!SenderBasedController::processFeedback(nowUs,
                                                 sequence,
-                                                rxTimestamp,
+                                                rxTimestampUs,
                                                 ecn)) {
         return false;
     }
@@ -163,21 +163,21 @@ bool NadaController::processFeedback(uint64_t now,
      */
     if (!m_lastTimeCalcValid) {
         /* First time receiving a feedback message */
-        m_lastTimeCalc = now;
+        m_lastTimeCalcUs = nowUs;
         m_lastTimeCalcValid = true;
         return true;
     }
 
-    assert(lessThan(m_lastTimeCalc, now + 1));
+    assert(lessThan(m_lastTimeCalcUs, nowUs + 1));
     /* calculate time since last update */
-    uint64_t delta = now - m_lastTimeCalc; // subtraction will wrap correctly
-    if (delta >= NADA_PARAM_DELTA) {
+    uint64_t deltaUs = nowUs - m_lastTimeCalcUs; // subtraction will wrap correctly
+    if (deltaUs >= NADA_PARAM_DELTA_US) {
         /* log & update rate calculation */
-        updateMetrics(now);
-        updateBw(now, delta);
-        logStats(now);
+        updateMetrics(nowUs);
+        updateBw(deltaUs);
+        logStats(nowUs);
 
-        m_lastTimeCalc = now;
+        m_lastTimeCalcUs = nowUs;
     }
     return true;
 }
@@ -188,7 +188,7 @@ bool NadaController::processFeedback(uint64_t now,
  * returns the calculated reference rate
  * (r_ref in rmcat-nada)
  */
-float NadaController::getBandwidth(uint64_t now) const {
+float NadaController::getBandwidth(uint64_t nowUs) const {
     return m_currBw;
 }
 
@@ -198,13 +198,13 @@ float NadaController::getBandwidth(uint64_t now) const {
  * control algorithm as specified in the rmcat-nada
  * draft (see Section 4)
  */
-void NadaController::updateBw(uint64_t now, uint64_t delta) {
+void NadaController::updateBw(uint64_t deltaUs) {
 
     int rmode = getRampUpMode();
     if (rmode == 0) {
         calcAcceleratedRampUp();
     } else {
-        calcGradualRateUpdate(delta);
+        calcGradualRateUpdate(deltaUs);
     }
 
     /* clip final rate within range */
@@ -218,16 +218,16 @@ void NadaController::updateBw(uint64_t now, uint64_t delta) {
  * rate from the base class SenderBasedController
  * and saves them to local member variables.
  */
-void NadaController::updateMetrics(uint64_t now) {
+void NadaController::updateMetrics(uint64_t nowUs) {
 
     /* Obtain packet stats in terms of loss and delay */
-    uint64_t qdelay = 0;
-    bool qdelayOK = getCurrentQdelay(qdelay);
-    if (qdelayOK) m_Qdelay = qdelay;
+    uint64_t qdelayUs = 0;
+    bool qdelayOK = getCurrentQdelay(qdelayUs);
+    if (qdelayOK) m_QdelayUs = qdelayUs;
 
-    uint64_t rtt = 0;
-    bool rttOK = getCurrentRTT(rtt);
-    if (rttOK) m_Rtt = rtt;
+    uint64_t rttUs = 0;
+    bool rttOK = getCurrentRTT(rttUs);
+    if (rttOK) m_RttUs = rttUs;
 
     float rrate = 0.f;
     bool rrateOK = getCurrentRecvRate(rrate);
@@ -253,11 +253,11 @@ void NadaController::updateMetrics(uint64_t now) {
 
     /* update aggregate congestion signal */
     m_Xprev = m_Xcurr;
-    if (qdelayOK) updateXcurr(now);
+    if (qdelayOK) updateXcurr();
 
 }
 
-void NadaController::logStats(uint64_t now) const {
+void NadaController::logStats(uint64_t nowUs) const {
 
     std::ostringstream os;
     os << std::fixed;
@@ -268,10 +268,10 @@ void NadaController::logStats(uint64_t now) const {
      * by all controllers and algorithm-specific
      * ones (e.g., xcurr for NADA) */
     os << " algo:nada " << m_id
-       << " ts: "     << now
+       << " ts: "     << (nowUs / 1000)
        << " loglen: " << m_packetHistory.size()
-       << " qdel: "   << m_Qdelay
-       << " rtt: "    << m_Rtt
+       << " qdel: "   << (m_QdelayUs / 1000)
+       << " rtt: "    << (m_RttUs / 1000)
        << " ploss: "  << m_ploss
        << " plr: "    << m_plr
        << " xcurr: "  << m_Xcurr
@@ -295,10 +295,10 @@ void NadaController::logStats(uint64_t now) const {
  *                                    QTH
  */
 float NadaController::calcDtilde() const {
-    const float qDelay = float(m_Qdelay);
+    const float qDelay = float(m_QdelayUs) / 1000.f;
     float xval = qDelay;
 
-    if (m_Qdelay > NADA_PARAM_QTH) {
+    if (m_QdelayUs / 1000 > NADA_PARAM_QTH) {
         float ratio = (qDelay - NADA_PARAM_QTH) / NADA_PARAM_QTH;
         ratio = NADA_PARAM_LAMBDA * ratio;
         xval = float(NADA_PARAM_QTH * exp(-ratio));
@@ -314,10 +314,10 @@ float NadaController::calcDtilde() const {
  * invoking the non-linear warping of queuing
  * delay is described in Sec. 4.2 of the draft.
  */
-void NadaController::updateXcurr(uint64_t now) {
+void NadaController::updateXcurr() {
 
-    float xdel = float(m_Qdelay);           // pure delay-based
-    float xtilde = calcDtilde();          // warped version
+    float xdel = float(m_QdelayUs) / 1000.f; // pure delay-based
+    float xtilde = calcDtilde();             // warped version
     const float currInt = float(m_currInt);
 
     /* Criteria for determining whether to perform
@@ -387,7 +387,7 @@ void NadaController::updateXcurr(uint64_t now) {
  *               - KAPPA*ETA*---------*r_ref         (7)
  *                              TAU
  */
-void NadaController::calcGradualRateUpdate(uint64_t delta) {
+void NadaController::calcGradualRateUpdate(uint64_t deltaUs) {
 
     float x_curr = m_Xcurr;
     float x_prev = m_Xprev;
@@ -400,7 +400,8 @@ void NadaController::calcGradualRateUpdate(uint64_t delta) {
     x_offset -= NADA_PARAM_PRIO * NADA_PARAM_XREF * m_maxBw / m_currBw;
 
     r_offset *= NADA_PARAM_KAPPA;
-    r_offset *= float(delta) / NADA_PARAM_TAU;
+    const float delta = float(deltaUs) / 1000.;
+    r_offset *= delta / NADA_PARAM_TAU;
     r_offset *= x_offset / NADA_PARAM_TAU;
 
     r_diff *= NADA_PARAM_KAPPA;
@@ -425,9 +426,10 @@ void NadaController::calcAcceleratedRampUp( ) {
 
     float gamma = 1.0;
 
-    uint64_t denom = m_Rtt;
-    denom += NADA_PARAM_DELTA;
-    denom += NADA_PARAM_DFILT;
+    uint64_t denom = m_RttUs;
+    denom += NADA_PARAM_DELTA_US;
+    denom += NADA_PARAM_DFILT_US;
+    denom /= 1000; // Us --> ms
 
     gamma = NADA_PARAM_QBOUND / float(denom);
 
@@ -440,7 +442,7 @@ void NadaController::calcAcceleratedRampUp( ) {
 }
 
 /**
- * This function determins whether the congestion control
+ * This function determines whether the congestion control
  * algorithm should operate in the accelerated ramp up mode
  *
  * The criteria for operating in accelerated ramp-up mode are
@@ -464,8 +466,8 @@ int NadaController::getRampUpMode() {
               rit != m_packetHistory.rend() && rmode == 0;
               ++rit) {
 
-        const uint64_t qDelayCurrent = rit->owd - m_baseDelay;
-        if (qDelayCurrent > NADA_PARAM_QEPS ) {
+        const uint64_t qDelayCurrentUs = rit->owdUs - m_baseDelayUs;
+        if (qDelayCurrentUs > NADA_PARAM_QEPS_US ) {
             rmode = 1;  /* Gradual update if queuing delay exceeds threshold*/
         }
     }

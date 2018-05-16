@@ -65,13 +65,13 @@ public:
     virtual void reset();
 
     /** NADA's implementation of the #processFeedback API */
-    virtual bool processFeedback(uint64_t now,
+    virtual bool processFeedback(uint64_t nowUs,
                                  uint16_t sequence,
-                                 uint64_t rxTimestamp,
+                                 uint64_t rxTimestampUs,
                                  uint8_t ecn=0);
 
     /** NADA's realization of the #getBandwidth API */
-    virtual float getBandwidth(uint64_t now) const;
+    virtual float getBandwidth(uint64_t nowUs) const;
 
 private:
 
@@ -81,25 +81,25 @@ private:
      * delay, loss, and receiving rate metrics and
      * copying them to local member variables
      *
-     * @param [in] now  current timestamp in ms
+     * @param [in] nowUs current timestamp in microseconds
      */
-    void updateMetrics(uint64_t now);
+    void updateMetrics(uint64_t nowUs);
 
     /**
-     * Function for printing losss, delay, and rate
+     * Function for printing losses, delay, and rate
      * metrics to log in a pre-formatted manner
-     * @param [in] now  current timestamp in ms
+     * @param [in] nowUs current timestamp in microseconds
      */
-    void logStats(uint64_t now) const;
+    void logStats(uint64_t nowUs) const;
 
     /**
      * Function for calculating the target bandwidth
      * following the NADA algorithm
      *
-     * @param [in] now   current timestamp in ms
-     * @param [in] delta interval from last bandwidth calculation
+     * @param [in] deltaUs interval from last bandwidth calculation
+     *                     in microseconds
      */
-    void updateBw(uint64_t now, uint64_t delta);
+    void updateBw(uint64_t deltaUs);
 
     /**
      * Function for calculating the reference rate (r_ref)
@@ -109,9 +109,9 @@ private:
      * See Section 4.3 and Eq.(5)-(7) in the rmcat-nada draft
      * for greater detail.
      *
-     * @param [in] delta interval from last bandwidth calculation
+     * @param [in] deltaUs interval from last bandwidth calculation in microseconds
      */
-    void calcGradualRateUpdate(uint64_t delta);
+    void calcGradualRateUpdate(uint64_t deltaUs);
 
     /**
      * Function for calculating the reference rate (r_ref)
@@ -144,10 +144,8 @@ private:
      * Function for calculating the aggregated congestion
      * signal (x_curr) based on packet statistics both
      * in terms of loss and delay.
-     *
-     * @param [in] now   current timestamp in ms  (t_curr in rmcat-nada)
      */
-    void updateXcurr(uint64_t now);
+    void updateXcurr();
 
     /**
      * Function for calculating the non-linear warping
@@ -169,15 +167,15 @@ private:
     float m_plr;     /**< packet loss ratio within packet history window */
     bool m_warpMode;  /**< whether to perform non-linear warping of queuing delay */
 
-    /** timestamp of when r_ref is last calculated (t_last in rmcat-nada), in ms  */
-    uint64_t m_lastTimeCalc;
+    /** timestamp of when r_ref is last calculated (t_last in rmcat-nada), in microseconds  */
+    uint64_t m_lastTimeCalcUs;
     /** whether value m_lastTimeCalc is valid: not valid before first rate update */
     bool m_lastTimeCalcValid;
 
     float m_currBw; /**< calculated reference rate (r_ref in rmcat-nada) */
 
-    uint64_t m_Qdelay; /**< estimated queuing delay in ms */
-    uint64_t m_Rtt; /**< estimated RTT value in ms */
+    uint64_t m_QdelayUs; /**< estimated queuing delay in microseconds */
+    uint64_t m_RttUs; /**< estimated RTT value in microseconds */
     float m_Xcurr;  /**< aggregated congestion signal (x_curr in rmcat-nada) in ms */
     float m_Xprev;  /**< previous value of the aggregated congestion signal (x_prev in rmcat-nada), in ms */
     float m_RecvR;  /**< updated receiving rate in bps */

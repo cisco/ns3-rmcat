@@ -58,7 +58,7 @@ RmcatSender::RmcatSender ()
 , m_rVin{0.}
 , m_rSend{0.}
 , m_rateShapingBytes{0}
-, m_nextSendTstmp{0}
+, m_nextSendTstmpUs{0}
 {}
 
 RmcatSender::~RmcatSender () {}
@@ -76,7 +76,7 @@ void RmcatSender::PauseResume (bool pause)
         m_rVin = m_initBw;
         m_rSend = m_initBw;
         m_enqueueEvent = Simulator::ScheduleNow (&RmcatSender::EnqueuePacket, this);
-        m_nextSendTstmp = 0;
+        m_nextSendTstmpUs = 0;
     }
     m_paused = pause;
 }
@@ -226,7 +226,7 @@ void RmcatSender::StartApplication ()
     m_socket->SetRecvCallback (MakeCallback (&RmcatSender::RecvPacket, this));
 
     m_enqueueEvent = Simulator::Schedule (Seconds (0.0), &RmcatSender::EnqueuePacket, this);
-    m_nextSendTstmp = 0;
+    m_nextSendTstmpUs = 0;
 }
 
 void RmcatSender::StopApplication ()
@@ -254,34 +254,34 @@ void RmcatSender::EnqueuePacket ()
                  << ", buffer size: " << m_rateShapingBuf.size ()
                  << ", buffer bytes: " << m_rateShapingBytes);
 
-    auto secsToNextEnqPacket = codec->second;
+    double secsToNextEnqPacket = codec->second;
     Time tNext{Seconds (secsToNextEnqPacket)};
     m_enqueueEvent = Simulator::Schedule (tNext, &RmcatSender::EnqueuePacket, this);
 
     if (!USE_BUFFER) {
         m_sendEvent = Simulator::ScheduleNow (&RmcatSender::SendPacket, this,
-                                              secsToNextEnqPacket * 1000.);
+                                              secsToNextEnqPacket * 1000. * 1000.);
         return;
     }
 
     if (m_rateShapingBuf.size () == 1) {
         // Buffer was empty
-        const uint64_t now = Simulator::Now ().GetMilliSeconds ();
-        const uint64_t msToNextSentPacket = now < m_nextSendTstmp ?
-                                                    m_nextSendTstmp - now : 0;
-        NS_LOG_INFO ("(Re-)starting the send timer: now " << now
+        const uint64_t nowUs = Simulator::Now ().GetMicroSeconds ();
+        const uint64_t usToNextSentPacket = nowUs < m_nextSendTstmpUs ?
+                                                    m_nextSendTstmpUs - nowUs : 0;
+        NS_LOG_INFO ("(Re-)starting the send timer: nowUs " << nowUs
                      << ", bytesToSend " << bytesToSend
-                     << ", msToNextSentPacket " << msToNextSentPacket
+                     << ", usToNextSentPacket " << usToNextSentPacket
                      << ", m_rSend " << m_rSend
                      << ", m_rVin " << m_rVin
                      << ", secsToNextEnqPacket " << secsToNextEnqPacket);
 
-        Time tNext{MilliSeconds (msToNextSentPacket)};
-        m_sendEvent = Simulator::Schedule (tNext, &RmcatSender::SendPacket, this, msToNextSentPacket);
+        Time tNext{MicroSeconds (usToNextSentPacket)};
+        m_sendEvent = Simulator::Schedule (tNext, &RmcatSender::SendPacket, this, usToNextSentPacket);
     }
 }
 
-void RmcatSender::SendPacket (uint64_t msSlept)
+void RmcatSender::SendPacket (uint64_t usSlept)
 {
     NS_ASSERT (m_rateShapingBuf.size () > 0);
     NS_ASSERT (m_rateShapingBytes < MAX_QUEUE_SIZE_SANITY);
@@ -298,30 +298,30 @@ void RmcatSender::SendPacket (uint64_t msSlept)
                  << ", buffer bytes: " << m_rateShapingBytes);
 
     // Synthetic oversleep: random uniform [0% .. 1%]
-    uint64_t oversleepMs = msSlept * (rand () % 100) / 10000; // TODO (next patch): change to Us
-    Time tOver{MilliSeconds (oversleepMs)};
+    uint64_t oversleepUs = usSlept * (rand () % 100) / 10000;
+    Time tOver{MicroSeconds (oversleepUs)};
     m_sendOversleepEvent = Simulator::Schedule (tOver, &RmcatSender::SendOverSleep,
                                                 this, bytesToSend);
 
     // schedule next sendData
-    const double msToNextSentPacketD = double (bytesToSend) * 8. * 1000. / m_rSend;
-    const uint64_t msToNextSentPacket = uint64_t (msToNextSentPacketD);
+    const double usToNextSentPacketD = double (bytesToSend) * 8. * 1000. * 1000. / m_rSend;
+    const uint64_t usToNextSentPacket = uint64_t (usToNextSentPacketD);
 
     if (!USE_BUFFER || m_rateShapingBuf.size () == 0) {
         // Buffer became empty
         const auto nowUs = Simulator::Now ().GetMicroSeconds ();
-        m_nextSendTstmp = nowUs / 1000 + msToNextSentPacket; //TODO Next
+        m_nextSendTstmpUs = nowUs + usToNextSentPacket;
         return;
     }
 
-    Time tNext{MilliSeconds (msToNextSentPacket)};
-    m_sendEvent = Simulator::Schedule (tNext, &RmcatSender::SendPacket, this, msToNextSentPacket);
+    Time tNext{MicroSeconds (usToNextSentPacket)};
+    m_sendEvent = Simulator::Schedule (tNext, &RmcatSender::SendPacket, this, usToNextSentPacket);
 }
 
 void RmcatSender::SendOverSleep (uint32_t bytesToSend) {
     const auto nowUs = Simulator::Now ().GetMicroSeconds ();
 
-    m_controller->processSendPacket (nowUs / 1000, m_sequence, bytesToSend); // TODO (next patch): change param to Us
+    m_controller->processSendPacket (nowUs, m_sequence, bytesToSend);
 
     ns3::RtpHeader header{96}; // 96: dynamic payload type, according to RFC 3551
     header.SetSequence (m_sequence++);
@@ -358,7 +358,7 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
     header.GetSsrcList (ssrcList);
     if (ssrcList.count (m_ssrc) == 0) {
         NS_LOG_INFO ("RmcatSender::Received Feedback packet with no data for SSRC " << m_ssrc);
-        CalcBufferParams (nowUs / 1000); // TODO (next patch): Change param to Us
+        CalcBufferParams (nowUs);
         return;
     }
     std::vector<std::pair<uint16_t,
@@ -370,15 +370,15 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
         const auto timestampUs = item.second.m_timestampUs;
         const auto ecn = item.second.m_ecn;
         NS_ASSERT (timestampUs <= nowUs);
-        m_controller->processFeedback (nowUs / 1000, sequence, timestampUs / 1000, ecn); // TODO (next patch): Change params to Us
+        m_controller->processFeedback (nowUs, sequence, timestampUs, ecn);
     }
-    CalcBufferParams (nowUs / 1000);
+    CalcBufferParams (nowUs);
 }
 
-void RmcatSender::CalcBufferParams (uint64_t now)
+void RmcatSender::CalcBufferParams (uint64_t nowUs)
 {
     //Calculate rate shaping buffer parameters
-    const auto r_ref = m_controller->getBandwidth (now); // in bps
+    const auto r_ref = m_controller->getBandwidth (nowUs); // bandwidth in bps
     float bufferLen;
     //Purpose: smooth out timing issues between send and receive
     // feedback for the common case: buffer oscillating between 0 and 1 packets

@@ -62,24 +62,24 @@ public:
      * Simplistic implementation of feedback packet processing. It simply
      * prints calculated metrics at regular intervals
      */
-    virtual bool processFeedback(uint64_t now,
+    virtual bool processFeedback(uint64_t nowUs,
                                  uint16_t sequence,
-                                 uint64_t rxTimestamp,
+                                 uint64_t rxTimestampUs,
                                  uint8_t ecn=0);
     /**
      * Simplistic implementation of bandwidth getter. It returns a hard-coded
      * bandwidth value in bits per second
      */
-    virtual float getBandwidth(uint64_t now) const;
+    virtual float getBandwidth(uint64_t nowUs) const;
 
 private:
-    void updateMetrics(uint64_t now);
-    void logStats(uint64_t now) const;
+    void updateMetrics();
+    void logStats(uint64_t nowUs) const;
 
-    uint64_t m_lastTimeCalc;
+    uint64_t m_lastTimeCalcUs;
     bool m_lastTimeCalcValid;
 
-    uint64_t m_Qdelay; /**< estimated queuing delay in ms */
+    uint64_t m_QdelayUs; /**< estimated queuing delay in microseconds */
     uint32_t m_ploss;  /**< packet loss count within configured window */
     float m_plr;       /**< packet loss ratio within packet history window */
     float m_RecvR;     /**< updated receiving rate in bps */
