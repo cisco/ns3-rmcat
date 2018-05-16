@@ -293,8 +293,6 @@ void RmcatSender::SendPacket (uint64_t msSlept)
     NS_ASSERT (m_rateShapingBytes >= bytesToSend);
     m_rateShapingBytes -= bytesToSend;
 
-    const auto nowUs = Simulator::Now ().GetMicroSeconds ();
-
     NS_LOG_INFO ("RmcatSender::SendPacket, packet dequeued, packet length: " << bytesToSend
                  << ", buffer size: " << m_rateShapingBuf.size ()
                  << ", buffer bytes: " << m_rateShapingBytes);
@@ -303,9 +301,7 @@ void RmcatSender::SendPacket (uint64_t msSlept)
     uint64_t oversleepMs = msSlept * (rand () % 100) / 10000; // TODO (next patch): change to Us
     Time tOver{MilliSeconds (oversleepMs)};
     m_sendOversleepEvent = Simulator::Schedule (tOver, &RmcatSender::SendOverSleep,
-                                                this, m_sequence, nowUs, bytesToSend);
-
-    m_controller->processSendPacket (nowUs / 1000, m_sequence++, bytesToSend); // TODO (next patch): change param to Us
+                                                this, bytesToSend);
 
     // schedule next sendData
     const double msToNextSentPacketD = double (bytesToSend) * 8. * 1000. / m_rSend;
@@ -313,7 +309,8 @@ void RmcatSender::SendPacket (uint64_t msSlept)
 
     if (!USE_BUFFER || m_rateShapingBuf.size () == 0) {
         // Buffer became empty
-        m_nextSendTstmp = nowUs / 1000 + msToNextSentPacket;
+        const auto nowUs = Simulator::Now ().GetMicroSeconds ();
+        m_nextSendTstmp = nowUs / 1000 + msToNextSentPacket; //TODO Next
         return;
     }
 
@@ -321,10 +318,13 @@ void RmcatSender::SendPacket (uint64_t msSlept)
     m_sendEvent = Simulator::Schedule (tNext, &RmcatSender::SendPacket, this, msToNextSentPacket);
 }
 
-void RmcatSender::SendOverSleep (uint16_t seq, int64_t nowUs, uint32_t bytesToSend) {
+void RmcatSender::SendOverSleep (uint32_t bytesToSend) {
+    const auto nowUs = Simulator::Now ().GetMicroSeconds ();
+
+    m_controller->processSendPacket (nowUs / 1000, m_sequence, bytesToSend); // TODO (next patch): change param to Us
 
     ns3::RtpHeader header{96}; // 96: dynamic payload type, according to RFC 3551
-    header.SetSequence (seq);
+    header.SetSequence (m_sequence++);
     NS_ASSERT (nowUs >= 0);
     // Most video payload types in RFC 3551, Table 5, use a 90 KHz clock
     // Therefore, assuming 90 KHz clock for RTP timestamps

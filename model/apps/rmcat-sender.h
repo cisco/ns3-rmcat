@@ -63,7 +63,7 @@ private:
 
     void EnqueuePacket ();
     void SendPacket (uint64_t msSlept);
-    void SendOverSleep (uint16_t seq, int64_t nowUs, uint32_t bytesToSend);
+    void SendOverSleep (uint32_t bytesToSend);
     void RecvPacket (Ptr<Socket> socket);
     void CalcBufferParams (uint64_t now);
 
