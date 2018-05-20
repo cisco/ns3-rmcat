@@ -17,8 +17,9 @@
 
 /**
  * @file
- * Header interface of RTP packets (RFC 3550) for ns3-rmcat.
- *
+ * Header interface of RTP packets (RFC 3550), and RTCP Feedback
+ * packets (draft-ietf-avtcore-cc-feedback-message-01) for ns3-rmcat.
+
  * @version 0.1.1
  * @author Jiantao Fu
  * @author Sergio Mena
@@ -244,14 +245,18 @@ public:
     virtual void Print (std::ostream& os) const;
 
     RejectReason AddFeedback (uint32_t ssrc, uint16_t seq, uint64_t timestampUs, uint8_t ecn=0);
+    bool Empty () const;
     void GetSsrcList (std::set<uint32_t>& rv) const;
     bool GetMetricList (uint32_t ssrc, std::vector<std::pair<uint16_t, MetricBlock> >& rv) const;
 
 protected:
     static std::pair<uint16_t, uint16_t> CalculateBeginStopSeq (const ReportBlock_t& rb);
+    static uint64_t NtpToUs (uint32_t ntp);
+    static uint32_t UsToNtp (uint64_t tsUs);
+    static uint16_t NtpToAto (uint32_t ntp, uint32_t ntpRef);
+    static uint32_t AtoToNtp (uint16_t ato, uint32_t ntpRef);
+
     bool UpdateLength ();
-    uint16_t TsToAto (uint64_t tsUs) const;
-    uint64_t AtoToTs (uint16_t ato) const;
     std::map<uint32_t /* SSRC */, ReportBlock_t> m_reportBlocks;
     uint64_t m_latestTsUs;
 };

@@ -67,7 +67,7 @@ void RmcatReceiver::StartApplication ()
     m_running = true;
     m_ssrc = rand ();
     m_header.SetSendSsrc (m_ssrc);
-    Time tFirst {MicroSeconds(m_periodUs)};
+    Time tFirst {MicroSeconds (m_periodUs)};
     m_sendEvent = Simulator::Schedule (tFirst, &RmcatReceiver::SendFeedback, this, true);
 }
 
@@ -92,7 +92,7 @@ void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
     NS_LOG_INFO ("RmcatReceiver::RecvPacket, " << packet->ToString ());
     packet->RemoveHeader (header);
     auto srcIp = InetSocketAddress::ConvertFrom (remoteAddr).GetIpv4 ();
-    auto srcPort = InetSocketAddress::ConvertFrom (remoteAddr).GetPort ();
+    const auto srcPort = InetSocketAddress::ConvertFrom (remoteAddr).GetPort ();
     if (m_waiting) {
         m_waiting = false;
         m_remoteSsrc = header.GetSsrc ();
@@ -122,21 +122,19 @@ void RmcatReceiver::AddFeedback (uint16_t sequence,
 
 void RmcatReceiver::SendFeedback (bool reschedule)
 {
-    if (!m_running) {
-        return;
+    if (m_running && !m_header.Empty ()) {
+        //TODO (authors): If packet empty, easiest is to send it as is. Propose to authors
+        auto packet = Create<Packet> ();
+        packet->AddHeader (m_header);
+        NS_LOG_INFO ("RmcatReceiver::SendFeedback, " << packet->ToString ());
+        m_socket->SendTo (packet, 0, InetSocketAddress{m_srcIp, m_srcPort});
+
+        m_header.Clear ();
+        m_header.SetSendSsrc (m_ssrc);
     }
 
-    //TODO (authors): If packet empty, easiest is to send it as is. Propose to authors
-    auto packet = Create<Packet> ();
-    packet->AddHeader (m_header);
-    NS_LOG_INFO ("RmcatReceiver::SendFeedback, " << packet->ToString ());
-    m_socket->SendTo (packet, 0, InetSocketAddress{m_srcIp, m_srcPort});
-
-    m_header.Clear ();
-    m_header.SetSendSsrc (m_ssrc);
-
     if (reschedule) {
-        Time tNext {MicroSeconds(m_periodUs)};
+        Time tNext {MicroSeconds (m_periodUs)};
         m_sendEvent = Simulator::Schedule (tNext, &RmcatReceiver::SendFeedback, this, true);
     }
 }

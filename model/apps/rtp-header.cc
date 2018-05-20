@@ -17,7 +17,8 @@
 
 /**
  * @file
- * Header implementation of RTP packets (RFC 3550) for ns3-rmcat.
+ * Header implementation of RTP packets (RFC 3550), and RTCP Feedback
+ * packets (draft-ietf-avtcore-cc-feedback-message-01) for ns3-rmcat.
  *
  * @version 0.1.1
  * @author Jiantao Fu
@@ -153,12 +154,12 @@ uint32_t RtpHeader::Deserialize (Buffer::Iterator start)
 void RtpHeader::Print (std::ostream& os) const
 {
     NS_ASSERT (m_csrcs.size () <= 0x0f);
-    os << "RtpHeader - version = " << RTP_VERSION
-       << ", padding =" << (m_padding ? "yes" : "no")
+    os << "RtpHeader - version = " << int (RTP_VERSION)
+       << ", padding = " << (m_padding ? "yes" : "no")
        << ", extension = " << (m_extension ? "yes" : "no")
        << ", CSRC count = " << m_csrcs.size ()
        << ", marker = " << (m_marker ? "yes" : "no")
-       << ", payload type = " << m_payloadType
+       << ", payload type = " << int (m_payloadType)
        << ", sequence = " << m_sequence
        << ", timestamp = " << m_timestamp
        << ", ssrc = " << m_ssrc;
@@ -359,10 +360,10 @@ uint32_t RtcpHeader::Deserialize (Buffer::Iterator start)
 
 void RtcpHeader::PrintN (std::ostream& os) const
 {
-    os << "Rtcp Common Header - version = " << RTP_VERSION
-       << ", padding =" << (m_padding ? "yes" : "no")
-       << ", type/count = " << m_typeOrCnt
-       << ", packet type = " << m_packetType
+    os << "Rtcp Common Header - version = " << int (RTP_VERSION)
+       << ", padding = " << (m_padding ? "yes" : "no")
+       << ", type/count = " << int (m_typeOrCnt)
+       << ", packet type = " << int (m_packetType)
        << ", length = " << m_length
        << ", ssrc of RTCP sender = " << m_sendSsrc;
 }
@@ -413,6 +414,9 @@ void RtcpHeader::SetSendSsrc (uint32_t sendSsrc)
 }
 
 
+constexpr uint16_t CCFeedbackHeader::MetricBlock::m_overrange;
+constexpr uint16_t CCFeedbackHeader::MetricBlock::m_unavailable;
+
 CCFeedbackHeader::CCFeedbackHeader ()
 : RtcpHeader{RTP_FB, RTCP_RTPFB_CC}
 , m_reportBlocks{}
@@ -429,7 +433,7 @@ void CCFeedbackHeader::Clear ()
     m_packetType = RTP_FB;
     m_typeOrCnt = RTCP_RTPFB_CC;
     ++m_length; // report timestamp field
-    m_reportBlocks.clear();
+    m_reportBlocks.clear ();
     m_latestTsUs = 0;
 }
 
@@ -469,6 +473,11 @@ CCFeedbackHeader::AddFeedback (uint32_t ssrc, uint16_t seq, uint64_t timestampUs
     }
     m_latestTsUs = std::max (m_latestTsUs, timestampUs);
     return CCFB_NONE;
+}
+
+bool CCFeedbackHeader::Empty () const
+{
+    return m_reportBlocks.empty ();
 }
 
 void CCFeedbackHeader::GetSsrcList (std::set<uint32_t>& rv) const
@@ -515,6 +524,7 @@ void CCFeedbackHeader::Serialize (Buffer::Iterator start) const
     NS_ASSERT (m_length >= 2); // TODO (authors): 0 report blocks should be allowed
     RtcpHeader::SerializeCommon (start);
 
+    NS_ASSERT (!m_reportBlocks.empty ()); // Empty reports are not allowed
     for (const auto& rb : m_reportBlocks) {
         start.WriteHtonU32 (rb.first);
         const auto beginStop = CalculateBeginStopSeq (rb.second);
@@ -533,7 +543,9 @@ void CCFeedbackHeader::Serialize (Buffer::Iterator start) const
                 const auto& mb = mb_it->second;
                 NS_ASSERT (mb.m_ecn <= 0x03);
                 octet1 |= uint8_t ((mb.m_ecn & 0x03) << 5);
-                const uint16_t ato = TsToAto (mb.m_timestampUs);
+                const uint32_t ntp = UsToNtp (mb.m_timestampUs);
+                const uint32_t ntpRef = UsToNtp (m_latestTsUs);
+                const uint16_t ato = NtpToAto (ntp, ntpRef);
                 NS_ASSERT (ato <= 0x1fff);
                 octet1 |= uint8_t (ato >> 8);
                 octet2 |= uint8_t (ato & 0xff);
@@ -545,8 +557,8 @@ void CCFeedbackHeader::Serialize (Buffer::Iterator start) const
             start.WriteHtonU16 (0); //padding
         }
     }
-    // TODO (next patch): convert from Us to NTP time
-    start.WriteHtonU32 (m_latestTsUs);
+    const uint32_t ntpTs = UsToNtp (m_latestTsUs);
+    start.WriteHtonU32 (ntpTs);
 }
 
 uint32_t CCFeedbackHeader::Deserialize (Buffer::Iterator start)
@@ -574,11 +586,14 @@ uint32_t CCFeedbackHeader::Deserialize (Buffer::Iterator start)
             const auto octet1 = start.ReadU8 ();
             const auto octet2 = start.ReadU8 ();
             if (RtpHdrGetBit (octet1, 7)) {
-                auto &mb = rb[seq];
-                mb.m_ecn = (octet1 >> 5) & 0x03;
                 uint16_t ato = (uint16_t (octet1) << 8) & 0x1f00;
                 ato |= uint16_t (octet2);
-                mb.m_ato = ato;
+                // 'Unavailable' treated as a lost packet
+                if (ato != MetricBlock::m_unavailable) {
+                    auto &mb = rb[seq];
+                    mb.m_ecn = (octet1 >> 5) & 0x03;
+                    mb.m_ato = ato;
+                }
             }
             ++seq;
         }
@@ -588,15 +603,19 @@ uint32_t CCFeedbackHeader::Deserialize (Buffer::Iterator start)
             --len_left;
         }
     }
-    // TODO (next patch): convert from NTP time to Us
-    m_latestTsUs = start.ReadNtohU32 ();
+    // TODO (authors): "NTP timestamp field in RTCP Sender Report (SR) and Receiver Report (RR) packets"
+    //                 (Minor) But, there's no NTP timestamp in RR packets
+    const uint32_t ntpRef = start.ReadNtohU32 ();
     // Populate all timestamps once Report Timestamp is known
-    // TODO (authors): Need second pass once report ts is deserialized
+    // TODO (authors): Need second pass once RTS is deserialized
     for (auto& rb : m_reportBlocks) {
         for (auto& mb : rb.second) {
-            mb.second.m_timestampUs = AtoToTs (mb.second.m_ato);
+            const uint32_t ntp = AtoToNtp (mb.second.m_ato, ntpRef);
+            mb.second.m_timestampUs = NtpToUs (ntp);
         }
     }
+    m_latestTsUs = NtpToUs (ntpRef);
+    NS_ASSERT (!m_reportBlocks.empty ()); // Empty reports are not allowed
     return GetSerializedSize ();
 }
 
@@ -615,19 +634,20 @@ void CCFeedbackHeader::Print (std::ostream& os) const
         for (uint16_t j = beginSeq; j != stopSeq; ++j) {
             const auto& mb_it = rb.second.find (j);
             const bool received = (mb_it != rb.second.end ());
-            os << "<L=" << uint8_t (received);
+            os << "<L=" << int (received);
             if (received) {
                 const auto& mb = mb_it->second;
-                os << ", ECN=0x" << std::hex << mb.m_ecn
-                   << ", ATO=0x" << TsToAto (mb.m_timestampUs);
+                const uint32_t ntp = UsToNtp (mb.m_timestampUs);
+                const uint32_t ntpRef = UsToNtp (m_latestTsUs);
+                os << ", ECN=0x" << std::hex << int (mb.m_ecn) << std::dec
+                   << ", ATO=" << NtpToAto (ntp, ntpRef);
             }
             os << ">,";
         }
         os << " }, ";
         ++i;
     }
-    // TODO (next patch): convert from Us to NTP time
-    os << "report timestamp = " << m_latestTsUs << std::endl;
+    os << "RTS = " << UsToNtp (m_latestTsUs) << std::endl;
 }
 
 std::pair<uint16_t, uint16_t>
@@ -688,24 +708,34 @@ bool CCFeedbackHeader::UpdateLength ()
     return true;
 }
 
-uint16_t CCFeedbackHeader::TsToAto (uint64_t tsUs) const
+uint16_t CCFeedbackHeader::NtpToAto (uint32_t ntp, uint32_t ntpRef)
 {
-    NS_ASSERT (tsUs <= m_latestTsUs);
-    const uint64_t offsetUs = m_latestTsUs - tsUs;
-    uint64_t ato = offsetUs * 1024 / 1000 / 1000;
-    ato = std::min<uint64_t> (ato, MetricBlock::m_overrange);
-    return uint16_t (ato);
+    NS_ASSERT (ntp <= ntpRef);
+    // ato contains offset measured in 1/1024 seconds
+    const uint32_t atoNtp = ntpRef - ntp;
+    const uint32_t atoNtpRounded = atoNtp + (1 << 5);
+    const uint16_t ato = uint16_t (atoNtpRounded >> 6); // i.e., * 0x400 / 0x10000
+    return std::min (ato, MetricBlock::m_overrange);
 }
 
-uint64_t CCFeedbackHeader::AtoToTs (uint16_t ato) const
+uint32_t CCFeedbackHeader::AtoToNtp (uint16_t ato, uint32_t ntpRef)
 {
+    NS_ASSERT (ato < MetricBlock::m_unavailable);
     // ato contains offset measured in 1/1024 seconds
-    if (ato == MetricBlock::m_overrange) {
-        //print warning
-    }
-    const uint64_t offsetUs = uint64_t (ato) * 1000 * 1000 / 1024;
-    NS_ASSERT (offsetUs <= m_latestTsUs);
-    return m_latestTsUs - offsetUs;
+    const uint32_t atoNtp = uint32_t (ato) << 6; // i.e., * 0x10000 / 0x400
+    NS_ASSERT (atoNtp <= ntpRef);
+    return ntpRef - atoNtp;
+}
+
+uint64_t CCFeedbackHeader::NtpToUs (uint32_t ntp)
+{
+    const double tsSeconds = double (ntp) / double (0x10000);
+    return uint64_t (tsSeconds * 1000. * 1000.);
+}
+uint32_t CCFeedbackHeader::UsToNtp (uint64_t tsUs)
+{
+    const double tsSeconds = double (tsUs) / 1000. / 1000.;
+    return uint32_t (tsSeconds * double (0x10000));
 }
 
 }
