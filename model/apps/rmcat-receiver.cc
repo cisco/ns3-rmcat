@@ -35,6 +35,15 @@
 NS_LOG_COMPONENT_DEFINE ("RmcatReceiver");
 
 namespace ns3 {
+RmcatReceiver::RmcatReceiver ()
+: m_running{false}
+, m_waiting{false}
+, m_ssrc{0}
+, m_remoteSsrc{0}
+, m_srcIp{}
+, m_srcPort{}
+, m_socket{NULL}
+{}
 
 RmcatReceiver::~RmcatReceiver () {}
 
@@ -53,6 +62,7 @@ void RmcatReceiver::Setup (uint16_t port)
 void RmcatReceiver::StartApplication ()
 {
     m_running = true;
+    m_ssrc = rand ();
 }
 
 void RmcatReceiver::StopApplication ()
@@ -66,41 +76,43 @@ void RmcatReceiver::RecvPacket (Ptr<Socket> socket)
         return;
     }
 
-    Address remoteAddr;
+    Address remoteAddr{};
     auto packet = m_socket->RecvFrom (remoteAddr);
     NS_ASSERT (packet);
-    RtpHeader header;
+    RtpHeader header{};
     NS_LOG_INFO ("RmcatReceiver::RecvPacket, " << packet->ToString ());
     packet->RemoveHeader (header);
     auto srcIp = InetSocketAddress::ConvertFrom (remoteAddr).GetIpv4 ();
     auto srcPort = InetSocketAddress::ConvertFrom (remoteAddr).GetPort ();
     if (m_waiting) {
         m_waiting = false;
-        m_srcId = header.m_ssrc;
+        m_remoteSsrc = header.GetSsrc ();
         m_srcIp = srcIp;
         m_srcPort = srcPort;
     } else {
         // Only one flow supported
-        NS_ASSERT (m_srcId == header.m_ssrc);
+        NS_ASSERT (m_remoteSsrc == header.GetSsrc ());
         NS_ASSERT (m_srcIp == srcIp);
         NS_ASSERT (m_srcPort == srcPort);
     }
 
-    //TODO (deferred): We need to aggregate feedback information
-    //                 (for the moment, one feedback packet per media packet)
-
-    auto recvTimestamp = Simulator::Now ().GetMilliSeconds ();
-    SendFeedback (header.m_sequence, recvTimestamp);
+    uint64_t recvTimestampUs = Simulator::Now ().GetMicroSeconds ();
+    SendFeedback (header.GetSequence (), recvTimestampUs);
 }
 
 void RmcatReceiver::SendFeedback (uint16_t sequence,
-                                  uint64_t recvTimestamp)
+                                  uint64_t recvTimestampUs)
 {
-    FeedbackHeader header;
-    header.flow_id = m_srcId;
-    header.sequence = uint32_t (sequence); //TODO: cast to uint32_t as we're still using old feedback header
-    header.receive_tstmp = recvTimestamp;
+    // TODO (next patch): We need to aggregate feedback information
+    //                    (for the moment, one feedback packet per media packet)
+    //                     - add member of type feedback header
+    //                     - add timeout (100 ms), upon timeout send header
+    //                     - if TOO_LONG, send immediately
 
+    CCFeedbackHeader header{};
+    header.SetSendSsrc (m_ssrc);
+    auto res = header.AddFeedback (m_remoteSsrc, sequence, recvTimestampUs);
+    NS_ASSERT (res == CCFeedbackHeader::CCFB_NONE);
     auto packet = Create<Packet> ();
     packet->AddHeader (header);
     NS_LOG_INFO ("RmcatReceiver::SendFeedback, " << packet->ToString ());
