@@ -365,16 +365,16 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
                           CCFeedbackHeader::MetricBlock> > feedback{};
     const bool res = header.GetMetricList (m_ssrc, feedback);
     NS_ASSERT (res);
+    std::vector<rmcat::SenderBasedController::FeedbackItem> fbBatch{};
     for (auto& item : feedback) {
         const auto sequence = item.first;
         const auto timestampUs = item.second.m_timestampUs;
         const auto ecn = item.second.m_ecn;
-        NS_ASSERT (timestampUs <= nowUs);
-        // TODO (Xiaoqing): Define a new API call to controller that takes the whole vector at once
-        //                  Adapt NADA to only use the last metric for measuring delay
-        //                  Careful! We still need to look at all packets for loss information
-        m_controller->processFeedback (nowUs, sequence, timestampUs, ecn);
+
+        const auto batchItem = std::make_tuple (sequence, timestampUs, ecn);
+        fbBatch.push_back (batchItem);
     }
+    m_controller->processFeedbackBatch (nowUs, fbBatch);
     CalcBufferParams (nowUs);
 }
 

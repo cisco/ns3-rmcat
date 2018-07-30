@@ -32,6 +32,8 @@
 #include <cstdint>
 #include <string>
 #include <deque>
+#include <vector>
+#include <tuple>
 #include <utility>
 
 
@@ -89,6 +91,15 @@ public:
      * a simplistic logging callback will do (e.g., no logging levels)
      */
     typedef void (*logCallback) (const std::string&);
+
+    /**
+     * This tuple represents an item of aggregated feedback, where the first item is the
+     * sequence number, the second is the receive timestamp (in microseconds), and the
+     * third is the ECN marking value read at the receiver
+     */
+    typedef std::tuple<uint16_t /* seq */,
+                       uint64_t /* rxTimestampUs */,
+                       uint8_t /* ecn */> FeedbackItem;
 
     /** To avoid future complexity and defects, we make the following
      *  assumptions regarding wrapping of unsigned integers:
@@ -226,6 +237,21 @@ public:
                                  uint16_t sequence,
                                  uint64_t rxTimestampUs,
                                  uint8_t ecn=0);
+
+    /**
+     * If aggregated feedback is received from the receiver endpoint, this function
+     * offers the send application a way to process the aggregated feedback as a batch
+     *
+     * This member function is not pure virtual, as contains a base implementation that
+     * calls function #processSendPacket in a loop
+     *
+     * @param [in] nowUs The time (in microseconds) at which this function is called
+     * @param [in] feedbackBatch A vector of tuples containing sequence numbers, receive
+     *             timestamps (in microseconds), and ECN marking values of
+     *             the aggregated feedback
+     */
+    virtual bool processFeedbackBatch(uint64_t nowUs,
+                                      const std::vector<FeedbackItem>& feedbackBatch);
 
     /**
      * The sender application will call this function every time it needs to
@@ -373,7 +399,7 @@ private:
     uint64_t m_historyLengthUs; // in microseconds
 
     void setDefaultId();
-    void updateInterLossData(const PacketRecord& packet);
+    void updateInterLossData(uint16_t sequence);
 };
 
 }

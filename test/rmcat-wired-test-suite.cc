@@ -61,8 +61,8 @@ RmcatTestSuite::RmcatTestSuite ()
     // null time vector as filler
     std::vector<uint32_t> t0s;
 
-    // TODO (deferred): decide where to specify default TCP behavior (currently duplicating
-    // in rmcat-wired and rmcat-wifi test suites
+    // TODO (deferred): decide where to specify default TCP behavior (currently duplicated
+    // in rmcat-wired and rmcat-wifi test suites)
     //
     // Default TCP configuration
     Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpNewReno"));
