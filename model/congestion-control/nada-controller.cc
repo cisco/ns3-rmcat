@@ -194,7 +194,7 @@ bool NadaController::processFeedback(uint64_t nowUs,
         /* log & update rate calculation */
         updateMetrics();
         updateBw(deltaUs);
-        logStats(nowUs);
+        logStats(nowUs, deltaUs);
 
         m_lastTimeCalcUs = nowUs;
     }
@@ -232,7 +232,7 @@ bool NadaController::processFeedbackBatch(uint64_t nowUs,
     /* log & update rate calculation */
     updateMetrics();
     updateBw(deltaUs);
-    logStats(nowUs);
+    logStats(nowUs, deltaUs);
 
     m_lastTimeCalcUs = nowUs;
     return true;
@@ -313,7 +313,7 @@ void NadaController::updateMetrics() {
 
 }
 
-void NadaController::logStats(uint64_t nowUs) const {
+void NadaController::logStats(uint64_t nowUs, uint64_t deltaUs) const {
 
     std::ostringstream os;
     os << std::fixed;
@@ -334,7 +334,8 @@ void NadaController::logStats(uint64_t nowUs) const {
        << " rrate: "  << m_RecvR
        << " srate: "  << m_currBw
        << " avgint: " << m_avgInt
-       << " curint: " << m_currInt;
+       << " curint: " << m_currInt
+       << " delta: "  << (deltaUs / 1000);
     logMessage(os.str());
 }
 

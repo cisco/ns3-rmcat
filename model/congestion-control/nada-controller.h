@@ -97,7 +97,7 @@ private:
      * metrics to log in a pre-formatted manner
      * @param [in] nowUs current timestamp in microseconds
      */
-    void logStats(uint64_t nowUs) const;
+    void logStats(uint64_t nowUs, uint64_t deltaUs) const;
 
     /**
      * Function for calculating the target bandwidth

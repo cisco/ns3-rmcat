@@ -114,8 +114,10 @@ def plot_test_case(tc_name, contents, dirname):
         qdelay = [x[1] for x in rmcat_log[obj]]
         rtt = [x[2] for x in rmcat_log[obj]]
         xcurr = [x[5] for x in rmcat_log[obj]]
+        delta = [x[11] for x in rmcat_log[obj]]
         plt.plot(ts, qdelay, 'o', color=rcolor, mfc=rcolor, mec='none', ms=2, label=obj)
         # plt.plot(ts, xcurr, 'o', color='purple', mfc='purple', mec='none', ms=2, label=obj)
+        # plt.plot(ts, delta, 'o', color=rcolor, mfc=rcolor, mec='none', ms=1, label=obj)
     plt.xlim(0, tmax)
     plt.ylim(0, 400)
     # plt.ylim(0, plt.gca().get_ylim()[1] * 1.5) #Margin for legend
