@@ -93,13 +93,15 @@ public:
     typedef void (*logCallback) (const std::string&);
 
     /**
-     * This tuple represents an item of aggregated feedback, where the first item is the
+     * This class represents an item of aggregated feedback, where the first item is the
      * sequence number, the second is the receive timestamp (in microseconds), and the
      * third is the ECN marking value read at the receiver
      */
-    typedef std::tuple<uint16_t /* seq */,
-                       uint64_t /* rxTimestampUs */,
-                       uint8_t /* ecn */> FeedbackItem;
+    struct FeedbackItem {
+        uint16_t sequence;
+        uint64_t rxTimestampUs;
+        uint8_t ecn;
+    };
 
     /** To avoid future complexity and defects, we make the following
      *  assumptions regarding wrapping of unsigned integers:
@@ -246,7 +248,7 @@ public:
      * calls function #processSendPacket in a loop
      *
      * @param [in] nowUs The time (in microseconds) at which this function is called
-     * @param [in] feedbackBatch A vector of tuples containing sequence numbers, receive
+     * @param [in] feedbackBatch A vector of items containing sequence numbers, receive
      *             timestamps (in microseconds), and ECN marking values of
      *             the aggregated feedback
      */

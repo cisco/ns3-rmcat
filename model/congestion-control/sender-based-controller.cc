@@ -267,12 +267,9 @@ bool SenderBasedController::processFeedback(uint64_t nowUs,
 
 bool SenderBasedController::processFeedbackBatch(uint64_t nowUs,
                                                  const std::vector<FeedbackItem>& feedbackBatch) {
-    for (const auto& feedback : feedbackBatch) {
-        const auto& sequence = std::get<0>(feedback);
-        const auto& rxTimestampUs = std::get<1>(feedback);
-        const auto& ecn = std::get<2>(feedback);
-        assert(lessThan(rxTimestampUs, nowUs));
-        if(!processFeedback(nowUs, sequence, rxTimestampUs, ecn)) {
+    for (const auto& fbItem : feedbackBatch) {
+        assert(lessThan(fbItem.rxTimestampUs, nowUs));
+        if(!processFeedback(nowUs, fbItem.sequence, fbItem.rxTimestampUs, fbItem.ecn)) {
             return false;
         }
     }

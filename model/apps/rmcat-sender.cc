@@ -367,12 +367,12 @@ void RmcatSender::RecvPacket (Ptr<Socket> socket)
     NS_ASSERT (res);
     std::vector<rmcat::SenderBasedController::FeedbackItem> fbBatch{};
     for (auto& item : feedback) {
-        const auto sequence = item.first;
-        const auto timestampUs = item.second.m_timestampUs;
-        const auto ecn = item.second.m_ecn;
-
-        const auto batchItem = std::make_tuple (sequence, timestampUs, ecn);
-        fbBatch.push_back (batchItem);
+        const rmcat::SenderBasedController::FeedbackItem fbItem{
+            .sequence = item.first,
+            .rxTimestampUs = item.second.m_timestampUs,
+            .ecn = item.second.m_ecn
+        };
+        fbBatch.push_back (fbItem);
     }
     m_controller->processFeedbackBatch (nowUs, fbBatch);
     CalcBufferParams (nowUs);
