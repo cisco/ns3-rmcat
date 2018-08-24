@@ -61,6 +61,10 @@ for i in range(len(tableau20)):
     colorlist.append((r / 255., g / 255., b / 255.))
 
 
+def adjust_tmax(tmax, new_max_ts):
+    tmax_tmp = int(new_max_ts + 2.5) / 5 * 5
+    return tmax_tmp if tmax_tmp > tmax else tmax
+
 def plot_test_case(tc_name, contents, dirname):
     rmcat_log = contents['nada']
     tcp_log = contents['tcp']
@@ -72,13 +76,14 @@ def plot_test_case(tc_name, contents, dirname):
 
     l = len(colorlist)
     pngfile = '{}.png'.format(tc_name);
-    tmax = 120
+    tmax = 100
     fig = plt.figure()
     plt.subplot(311)
     for (i, obj) in enumerate(rmcat_keys):
         rcolor = colorlist[i % l]
         rcolor2 = colorlist[i+1 % l]
         ts = [x[0] for x in rmcat_log[obj]]
+        tmax = adjust_tmax(tmax, max(ts))
         rrate = [x[6]/1.e+6 for x in rmcat_log[obj]]
         srate = [x[7]/1.e+6 for x in rmcat_log[obj]]
         if nflow == 1:
@@ -93,11 +98,10 @@ def plot_test_case(tc_name, contents, dirname):
     for (i, obj) in enumerate(tcp_keys):
         rcolor = colorlist[(i + 5) % l]
         ts = [x[0] for x in tcp_log[obj]]
+        tmax = adjust_tmax(tmax, max(ts))
         rrate = [x[2]/1.e+6 for x in tcp_log[obj]]
         plt.plot(ts, rrate, '-o', linewidth=.7, color=rcolor, mfc=rcolor, mec='none',
                                   ms=2, label=obj)
-        if max(ts)>150:
-            tmax = 300
 
     plt.xlim(0, tmax)
     plt.ylim(0, 2.5)

@@ -50,7 +50,8 @@ const uint32_t RMCAT_TC_LONG_TCP_PORT  = 6000;
 const uint32_t RMCAT_TC_SHORT_TCP_PORT = 7000;
 const uint32_t RMCAT_TC_RMCAT_PORT     = 8000;
 
-const uint32_t RMCAT_TC_SHORT_TCP_TGAP = 60;
+// TODO (deferred): These two values should be set to 0 to match eval-test-06 draft
+const uint32_t RMCAT_TC_SHORT_TCP_TGAP = 10;
 const uint32_t RMCAT_TC_SHORT_TCP_MEAN_OFF_TIME = 10;  // mean off duration of each short TCP flow: 10 seconds
 const uint32_t RMCAT_TC_SHORT_TCP_MIN_FILE_SIZE = 30 * (1u << 10); // minimum file size: 30KB
 const uint32_t RMCAT_TC_SHORT_TCP_MAX_FILE_SIZE = 50 * (1u << 10); // minimum file size: 30KB
