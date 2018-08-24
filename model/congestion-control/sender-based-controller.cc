@@ -29,7 +29,6 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
-#include <vector>
 #include <cassert>
 
 
@@ -113,25 +112,25 @@ void SenderBasedController::reset() {
 }
 
 //TODO (deferred): This logic is to be encapsulated within class InterLossState
-void SenderBasedController::updateInterLossData(const PacketRecord& packet) {
+void SenderBasedController::updateInterLossData(uint16_t sequence) {
     if (m_packetHistory.empty()) {
         m_ilState = InterLossState{}; // Reset
-        m_ilState.expectedSeq = packet.sequence;
+        m_ilState.expectedSeq = sequence;
     }
 
     // update state for TFRC-style inter-loss interval calculation
-    if (packet.sequence == m_ilState.expectedSeq) {
+    if (sequence == m_ilState.expectedSeq) {
         ++m_ilState.intervals[0];
         ++m_ilState.expectedSeq;
         return;
     }
-    assert(packet.sequence > m_ilState.expectedSeq);
+    assert(sequence > m_ilState.expectedSeq);
     m_ilState.intervals.push_front(1); // Start new interval; shift the existing ones
     if (m_ilState.intervals.size() > 9) {
         m_ilState.intervals.pop_back();
     }
 
-    m_ilState.expectedSeq = packet.sequence + 1;
+    m_ilState.expectedSeq = sequence + 1;
     m_ilState.initialized = true;
 }
 
@@ -245,7 +244,7 @@ bool SenderBasedController::processFeedback(uint64_t nowUs,
         m_baseDelayUs = packet.owdUs;
     }
 
-    updateInterLossData(packet);
+    updateInterLossData(packet.sequence);
 
     m_packetHistory.push_back(packet);
     m_pktSizeSum += packet.size;
@@ -262,6 +261,17 @@ bool SenderBasedController::processFeedback(uint64_t nowUs,
         m_packetHistory.pop_front();
         assert(m_pktSizeSum >= firstSize);
         m_pktSizeSum -= firstSize;
+    }
+    return true;
+}
+
+bool SenderBasedController::processFeedbackBatch(uint64_t nowUs,
+                                                 const std::vector<FeedbackItem>& feedbackBatch) {
+    for (const auto& fbItem : feedbackBatch) {
+        assert(lessThan(fbItem.rxTimestampUs, nowUs));
+        if(!processFeedback(nowUs, fbItem.sequence, fbItem.rxTimestampUs, fbItem.ecn)) {
+            return false;
+        }
     }
     return true;
 }

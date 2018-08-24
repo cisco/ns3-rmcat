@@ -139,6 +139,24 @@ void NadaController::reset() {
     SenderBasedController::reset();
 }
 
+bool NadaController::processSendPacket(uint64_t txTimestampUs,
+                                       uint16_t sequence,
+                                       uint32_t size) { // in Bytes
+    /* First of all, call the superclass */
+    if (!SenderBasedController::processSendPacket(txTimestampUs, sequence, size)) {
+        return false;
+    }
+
+    /* Optimization: to avoid skipping the rate update upon the first received feedback
+     * batch, we initialize the last time the rate was updated to the first media packet sent
+     */
+    if (!m_lastTimeCalcValid) {
+        m_lastTimeCalcUs = txTimestampUs;
+        m_lastTimeCalcValid = true;
+    }
+    return true;
+}
+
 /**
  * Implementation of the #processFeedback API
  * in the SenderBasedController class
@@ -158,11 +176,12 @@ bool NadaController::processFeedback(uint64_t nowUs,
     }
 
     /* Update calculation of reference rate (r_ref)
-     * if last calculation occurred more than NADA_PARAM_DELTA
-     * (target update interval in ms) ago
+     * if last calculation occurred more than NADA_PARAM_DELTA_US
+     * (target update interval in microseconds) ago
      */
+
+    /* First time receiving a feedback message */
     if (!m_lastTimeCalcValid) {
-        /* First time receiving a feedback message */
         m_lastTimeCalcUs = nowUs;
         m_lastTimeCalcValid = true;
         return true;
@@ -170,15 +189,52 @@ bool NadaController::processFeedback(uint64_t nowUs,
 
     assert(lessThan(m_lastTimeCalcUs, nowUs + 1));
     /* calculate time since last update */
-    uint64_t deltaUs = nowUs - m_lastTimeCalcUs; // subtraction will wrap correctly
+    const uint64_t deltaUs = nowUs - m_lastTimeCalcUs; // subtraction will wrap correctly
     if (deltaUs >= NADA_PARAM_DELTA_US) {
         /* log & update rate calculation */
-        updateMetrics(nowUs);
+        updateMetrics();
         updateBw(deltaUs);
-        logStats(nowUs);
+        logStats(nowUs, deltaUs);
 
         m_lastTimeCalcUs = nowUs;
     }
+    return true;
+}
+
+bool NadaController::processFeedbackBatch(uint64_t nowUs,
+                                          const std::vector<FeedbackItem>& feedbackBatch) {
+    /* First of all, call the superclass */
+    if (!SenderBasedController::processFeedbackBatch(nowUs, feedbackBatch)) {
+        return false;
+    }
+
+    /* Update calculation of reference rate (r_ref)
+     * Make sure that last calculation occurred more than NADA_PARAM_DELTA_US
+     * (target update interval in microseconds) ago. Apply with some leniency
+     * so that calculation time coincides with aggregate feedback processing
+     * most of the time.
+     */
+
+    /* First time receiving a feedback message */
+    if (!m_lastTimeCalcValid) {
+        m_lastTimeCalcUs = nowUs;
+        m_lastTimeCalcValid = true;
+        return true;
+    }
+
+    assert(lessThan(m_lastTimeCalcUs, nowUs + 1));
+    /* calculate time since last update */
+    const uint64_t deltaUs = nowUs - m_lastTimeCalcUs; // subtraction will wrap correctly
+    /* 50% leniency */
+    if (deltaUs < NADA_PARAM_DELTA_US * .5) {
+        return true;
+    }
+    /* log & update rate calculation */
+    updateMetrics();
+    updateBw(deltaUs);
+    logStats(nowUs, deltaUs);
+
+    m_lastTimeCalcUs = nowUs;
     return true;
 }
 
@@ -218,7 +274,7 @@ void NadaController::updateBw(uint64_t deltaUs) {
  * rate from the base class SenderBasedController
  * and saves them to local member variables.
  */
-void NadaController::updateMetrics(uint64_t nowUs) {
+void NadaController::updateMetrics() {
 
     /* Obtain packet stats in terms of loss and delay */
     uint64_t qdelayUs = 0;
@@ -257,7 +313,7 @@ void NadaController::updateMetrics(uint64_t nowUs) {
 
 }
 
-void NadaController::logStats(uint64_t nowUs) const {
+void NadaController::logStats(uint64_t nowUs, uint64_t deltaUs) const {
 
     std::ostringstream os;
     os << std::fixed;
@@ -278,7 +334,8 @@ void NadaController::logStats(uint64_t nowUs) const {
        << " rrate: "  << m_RecvR
        << " srate: "  << m_currBw
        << " avgint: " << m_avgInt
-       << " curint: " << m_currInt;
+       << " curint: " << m_currInt
+       << " delta: "  << (deltaUs / 1000);
     logMessage(os.str());
 }
 

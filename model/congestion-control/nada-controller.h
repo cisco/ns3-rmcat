@@ -64,11 +64,20 @@ public:
      */
     virtual void reset();
 
+    /** NADA's implementation of the #processSendPacket API */
+    virtual bool processSendPacket(uint64_t txTimestampUs,
+                                   uint16_t sequence,
+                                   uint32_t size); // in Bytes
+
     /** NADA's implementation of the #processFeedback API */
     virtual bool processFeedback(uint64_t nowUs,
                                  uint16_t sequence,
                                  uint64_t rxTimestampUs,
                                  uint8_t ecn=0);
+
+    /** NADA's implementation of the #processFeedbackBatch API */
+    virtual bool processFeedbackBatch(uint64_t nowUs,
+                                      const std::vector<FeedbackItem>& feedbackBatch);
 
     /** NADA's realization of the #getBandwidth API */
     virtual float getBandwidth(uint64_t nowUs) const;
@@ -80,17 +89,15 @@ private:
      * (by the base class SenderBasedController) of
      * delay, loss, and receiving rate metrics and
      * copying them to local member variables
-     *
-     * @param [in] nowUs current timestamp in microseconds
      */
-    void updateMetrics(uint64_t nowUs);
+    void updateMetrics();
 
     /**
      * Function for printing losses, delay, and rate
      * metrics to log in a pre-formatted manner
      * @param [in] nowUs current timestamp in microseconds
      */
-    void logStats(uint64_t nowUs) const;
+    void logStats(uint64_t nowUs, uint64_t deltaUs) const;
 
     /**
      * Function for calculating the target bandwidth

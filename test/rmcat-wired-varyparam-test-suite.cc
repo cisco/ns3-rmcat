@@ -58,8 +58,8 @@ RmcatVaryParamTestSuite::RmcatVaryParamTestSuite ()
     uint32_t qdel = 300;            // bottleneck queuing delay:    300ms
     uint32_t simT = 300;            // default simulation duration: 120s
 
-    // TODO (deferred): decide where to specify default TCP behavior (currently duplicating
-    // in rmcat-wired and rmcat-wifi test suites
+    // TODO (deferred): decide where to specify default TCP behavior (currently duplicated
+    // in rmcat-wired and rmcat-wifi test suites)
     //
     // Default TCP configuration
     Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpNewReno"));

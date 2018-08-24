@@ -41,13 +41,14 @@ def process_controller_log(line, test_logs):
         return
 
     'parsing nada-specific stats'
-    # ts: 158114 loglen: 60 qdel: 286 rtt: 386 ploss: 0 plr: 0.00 xcurr: 4.72 rrate: 863655.56 srate: 916165.81 avgint: 437.10 curint: 997
+    # ts: 158114 loglen: 60 qdel: 286 rtt: 386 ploss: 0 plr: 0.00 xcurr: 4.72 rrate: 863655.56 srate: 916165.81 avgint: 437.10 curint: 997 delta: 100
     match = re.search(r'algo:nada (\S+) ts: (\d+) loglen: (\d+)', line)
     match_d = re.search(r'qdel: (\d+(?:\.\d*)?|\.\d+) rtt: (\d+(?:\.\d*)?|\.\d+)', line)
     match_p = re.search(r'ploss: (\d+) plr: (\d+(?:\.\d*)?|\.\d+)', line)
     match_x = re.search(r'xcurr: (\d+(?:\.\d*)?|\.\d+)', line)
     match_r = re.search(r'rrate: (\d+(?:\.\d*)?|\.\d+) srate: (\d+(?:\.\d*)?|\.\d+)', line)
     match_l = re.search(r'avgint: (\d+(?:\.\d*)?|\.\d+) curint: (\d+(?:\.\d*)?|\.\d+)', line)
+    match_D = re.search(r'delta: (\d+(?:\.\d*)?|\.\d+)', line)
 
     if match:
         assert (match_d and match_p and match_x and match_r and match_l)
@@ -64,11 +65,12 @@ def process_controller_log(line, test_logs):
         srate = float(match_r.group(2))
         avgint = float(match_l.group(1))
         curint = int(match_l.group(2))
+        delta = float(match_D.group(1))
 
         if obj not in test_logs['nada']:
             test_logs['nada'][obj] = []
         test_logs['nada'][obj].append([ts, qdel, rtt, ploss, plr, x_curr,
-                                       rrate, srate, loglen, avgint, curint])
+                                       rrate, srate, loglen, avgint, curint, delta])
         return
 
 
@@ -127,7 +129,7 @@ def saveto_matfile(dirname, test_name, test_logs):
         nrec = len(test_logs['nada'][obj])
         print 'parsing flow ', obj, ' number of records: ', nrec
         for j in range(nrec):
-            row = process_row(test_logs['nada'][obj][j], width=11)
+            row = process_row(test_logs['nada'][obj][j], width=12)
             f_out.write(SEP.join([str(i), row]))
             f_out.write('\n')
 
