@@ -481,7 +481,7 @@ void RmcatWiredTestCase::SetUpTCPShort (size_t numFlows,
 {
     uint16_t port = RMCAT_TC_SHORT_TCP_PORT;
     int startTime = RMCAT_TC_SHORT_TCP_TGAP;
-    int endTime = m_simTime-RMCAT_TC_SHORT_TCP_TGAP;
+    int endTime = m_simTime - RMCAT_TC_SHORT_TCP_TGAP;
 
     /*
      * Default values of the following parameters follow
