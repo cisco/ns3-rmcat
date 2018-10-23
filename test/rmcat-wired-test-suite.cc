@@ -72,6 +72,8 @@ RmcatTestSuite::RmcatTestSuite ()
     // Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (RMCAT_TC_TCP_RECVBUF_SIZE));
     // Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (RMCAT_TC_TCP_RECVBUF_SIZE));
 
+    // TODO (deferred): Set up a mechanism (e.g., json-based) to load TC setup. Goal: improve readability
+
     // -----------------------
     // Test Case 5.1: Variable Available Capacity with a Single Flow
     // -----------------------
@@ -187,7 +189,6 @@ RmcatTestSuite::RmcatTestSuite ()
     tstartTC55.push_back (30);  tstopTC55.push_back (299);
     tstartTC55.push_back (40);  tstopTC55.push_back (299);
     RmcatWiredTestCase * tc55 = new RmcatWiredTestCase{bw, 10, qdel, "rmcat-test-case-5.5-fixfps"};
-    tc55->SetCapacity (3.5 * (1u << 20));  // bottleneck capacity: 3.5 Mbps
     tc55->SetSimTime (300); // simulation time: 300s
     tc55->SetRMCATFlows (5, tstartTC55, tstopTC55, true);  // Forward path
     tc55->SetPropDelays (pDelaysTC55);
