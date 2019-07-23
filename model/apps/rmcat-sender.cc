@@ -55,6 +55,7 @@ RmcatSender::RmcatSender ()
 , m_enqueueEvent{}
 , m_sendEvent{}
 , m_sendOversleepEvent{}
+, m_fps{30.}
 , m_rVin{0.}
 , m_rSend{0.}
 , m_rateShapingBytes{0}
@@ -98,15 +99,17 @@ void RmcatSender::SetCodecType (SyncodecType codecType)
         }
         case SYNCODEC_TYPE_FIXFPS:
         {
-            const auto fps = SYNCODEC_DEFAULT_FPS;
-            auto innerCodec = new syncodecs::SimpleFpsBasedCodec{fps};
+//            const auto fps = SYNCODEC_DEFAULT_FPS;
+            m_fps = SYNCODEC_DEFAULT_FPS;
+            auto innerCodec = new syncodecs::SimpleFpsBasedCodec{m_fps};
             codec = new syncodecs::ShapedPacketizer{innerCodec, DEFAULT_PACKET_SIZE};
             break;
         }
         case SYNCODEC_TYPE_STATS:
         {
-            const auto fps = SYNCODEC_DEFAULT_FPS;
-            auto innerStCodec = new syncodecs::StatisticsCodec{fps};
+            // const auto fps = SYNCODEC_DEFAULT_FPS;
+            m_fps = SYNCODEC_DEFAULT_FPS;
+            auto innerStCodec = new syncodecs::StatisticsCodec{m_fps};
             codec = new syncodecs::ShapedPacketizer{innerStCodec, DEFAULT_PACKET_SIZE};
             break;
         }
@@ -147,7 +150,7 @@ void RmcatSender::SetCodecType (SyncodecType codecType)
                                     filePrefix,      // video filename
                                     SYNCODEC_DEFAULT_FPS,             // Default FPS: 30fps
                                     true};           // fixed mode: image resolution doesn't change
-
+	    m_fps = SYNCODEC_DEFAULT_FPS; 
             codec = new syncodecs::ShapedPacketizer{innerCodec, DEFAULT_PACKET_SIZE};
             break;
         }
@@ -395,14 +398,17 @@ void RmcatSender::CalcBufferParams (uint64_t nowUs)
 
     // TODO (deferred): encapsulate rate shaping buffer in a separate class
     if (USE_BUFFER && static_cast<bool> (codec)) {
-        const float fps = 1. / static_cast<float>  (codec->second);
-        m_rVin = std::max<float> (m_minBw, r_ref - BETA_V * 8. * bufferLen * fps);
-        m_rSend = r_ref + BETA_S * 8. * bufferLen * fps;
-        NS_LOG_INFO ("New rate shaping buffer parameters: r_ref " << r_ref
-                     << ", m_rVin " << m_rVin
-                     << ", m_rSend " << m_rSend
-                     << ", fps " << fps
-                     << ", buffer length " << bufferLen);
+//        const float fps = 1. / static_cast<float>  (codec->second);
+//
+   	float r_diff = 8. * bufferLen * m_fps;
+	r_diff = std::min<float>(r_diff, r_ref*0.05);  // limit change to 5% of reference rate
+        m_rVin = std::max<float> (m_minBw, r_ref - BETA_V * r_diff);
+        m_rSend = std::min<float>(m_maxBw, r_ref + BETA_S * r_diff);
+        NS_LOG_INFO ("New rate shaping buffer parameters: r_ref " << r_ref/1000. // in Kbps
+                     << ", m_rVin " << m_rVin/1000.
+                     << ", m_rSend " << m_rSend/1000.
+                     << ", fps " << m_fps
+                     << ", buffer length " << bufferLen);  // in Bytes
     } else {
         m_rVin = r_ref;
         m_rSend = r_ref;
