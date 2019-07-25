@@ -57,8 +57,8 @@ enum SyncodecType {
  * setting USE_BUFFER to false.
  */
 const bool USE_BUFFER = true;
-const float BETA_V = 0.1;
-const float BETA_S = 0.1; 
+const float BETA_V = 0.0;
+const float BETA_S = 0.0; 
 const uint32_t MAX_QUEUE_SIZE_SANITY = 80 * 1000 * 1000; //bytes
 
 /* topology parameters */

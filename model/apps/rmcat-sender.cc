@@ -401,9 +401,10 @@ void RmcatSender::CalcBufferParams (uint64_t nowUs)
 //        const float fps = 1. / static_cast<float>  (codec->second);
 //
    	float r_diff = 8. * bufferLen * m_fps;
-	r_diff = std::min<float>(r_diff, r_ref*0.05);  // limit change to 5% of reference rate
-        m_rVin = std::max<float> (m_minBw, r_ref - BETA_V * r_diff);
-        m_rSend = std::min<float>(m_maxBw, r_ref + BETA_S * r_diff);
+	float r_diff_v = std::min<float>(BETA_V*r_diff, r_ref*0.05);  // limit change to 5% of reference rate
+	float r_diff_s = std::min<float>(BETA_S*r_diff, r_ref*0.05);  // limit change to 5% of reference rate
+        m_rVin = std::max<float> (m_minBw, r_ref - r_diff_v);
+        m_rSend = std::min<float>(m_maxBw, r_ref + r_diff_s);
         NS_LOG_INFO ("New rate shaping buffer parameters: r_ref " << r_ref/1000. // in Kbps
                      << ", m_rVin " << m_rVin/1000.
                      << ", m_rSend " << m_rSend/1000.
