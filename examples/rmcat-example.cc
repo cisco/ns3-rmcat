@@ -226,14 +226,16 @@ int main (int argc, char *argv[])
     NodeContainer nodes = BuildExampleTopo (linkBw, msDelay, msQDelay);
 
     int port = 8000;
-    for (size_t i = 0; i < nRmcat; i++) {
+    nRmcat = std::max<int> (0, nRmcat); // No negative RMCAT flows
+    for (size_t i = 0; i < (unsigned int) nRmcat; ++i) {
         auto start = 10. * i;
         auto end = std::max (start + 1., endTime - start);
         InstallApps (nada, nodes.Get (0), nodes.Get (1), port++,
                      initBw, minBw, maxBw, start, end);
     }
 
-    for (size_t i = 0; i < nTcp; i++) {
+    nTcp = std::max<int> (0, nTcp); // No negative TCP flows
+    for (size_t i = 0; i < (unsigned int) nTcp; ++i) {
         auto start = 17. * i;
         auto end = std::max (start + 1., endTime - start);
         InstallTCP (nodes.Get (0), nodes.Get (1), port++, start, end);
@@ -243,7 +245,8 @@ int main (int argc, char *argv[])
     const uint64_t bandwidth = RMCAT_DEFAULT_RMAX / 4;
     const uint32_t pktSize = DEFAULT_PACKET_SIZE;
 
-    for (size_t i = 0; i < nUdp; i++) {
+    nUdp = std::max<int> (0, nUdp); // No negative UDP flows
+    for (size_t i = 0; i < (unsigned int) nUdp; ++i) {
         auto start = 23. * i;
         auto end = std::max (start + 1., endTime - start);
         InstallUDP (nodes.Get (0), nodes.Get (1), port++,

@@ -267,7 +267,7 @@ RmcatWifiTestSuite :: RmcatWifiTestSuite ()
     /* start/stop times of background CBR traffic, multiple flows */
     std::vector<uint32_t> tstartCBRTC42; // Seconds
     std::vector<uint32_t> tstopCBRTC42;  // Seconds
-    for (int i = 0; i < nCBR; i++) {
+    for (uint32_t i = 0; i < nCBR; ++i) {
         tstartCBRTC42.push_back (RMCAT_TC_BG_TSTART);  // t_start = 40s
         tstopCBRTC42.push_back (RMCAT_TC_BG_TFINIS);   // t_stop = 80s
     }
@@ -294,7 +294,7 @@ RmcatWifiTestSuite :: RmcatWifiTestSuite ()
     /* start/stop times of background TCP traffic; single flow */
     std::vector<uint32_t> tstartTCPTC42; // Seconds
     std::vector<uint32_t> tstopTCPTC42;  // Seconds
-    for (int i = 0; i < nTCP; i++) {
+    for (uint32_t i = 0; i < nTCP; ++i) {
         tstartTCPTC42.push_back (RMCAT_TC_BG_TSTART);  // t_start = 40s
         tstopTCPTC42.push_back (RMCAT_TC_BG_TFINIS);   // t_stop = 80s
     }

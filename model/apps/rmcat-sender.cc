@@ -99,7 +99,6 @@ void RmcatSender::SetCodecType (SyncodecType codecType)
         }
         case SYNCODEC_TYPE_FIXFPS:
         {
-//            const auto fps = SYNCODEC_DEFAULT_FPS;
             m_fps = SYNCODEC_DEFAULT_FPS;
             auto innerCodec = new syncodecs::SimpleFpsBasedCodec{m_fps};
             codec = new syncodecs::ShapedPacketizer{innerCodec, DEFAULT_PACKET_SIZE};
@@ -107,7 +106,6 @@ void RmcatSender::SetCodecType (SyncodecType codecType)
         }
         case SYNCODEC_TYPE_STATS:
         {
-            // const auto fps = SYNCODEC_DEFAULT_FPS;
             m_fps = SYNCODEC_DEFAULT_FPS;
             auto innerStCodec = new syncodecs::StatisticsCodec{m_fps};
             codec = new syncodecs::ShapedPacketizer{innerStCodec, DEFAULT_PACKET_SIZE};
@@ -150,7 +148,7 @@ void RmcatSender::SetCodecType (SyncodecType codecType)
                                     filePrefix,      // video filename
                                     SYNCODEC_DEFAULT_FPS,             // Default FPS: 30fps
                                     true};           // fixed mode: image resolution doesn't change
-	    m_fps = SYNCODEC_DEFAULT_FPS; 
+	    m_fps = SYNCODEC_DEFAULT_FPS;
             codec = new syncodecs::ShapedPacketizer{innerCodec, DEFAULT_PACKET_SIZE};
             break;
         }
@@ -398,11 +396,9 @@ void RmcatSender::CalcBufferParams (uint64_t nowUs)
 
     // TODO (deferred): encapsulate rate shaping buffer in a separate class
     if (USE_BUFFER && static_cast<bool> (codec)) {
-//        const float fps = 1. / static_cast<float>  (codec->second);
-//
-   	float r_diff = 8. * bufferLen * m_fps;
-	float r_diff_v = std::min<float>(BETA_V*r_diff, r_ref*0.05);  // limit change to 5% of reference rate
-	float r_diff_s = std::min<float>(BETA_S*r_diff, r_ref*0.05);  // limit change to 5% of reference rate
+        float r_diff = 8. * bufferLen * m_fps;
+        float r_diff_v = std::min<float>(BETA_V*r_diff, r_ref*0.05);  // limit change to 5% of reference rate
+        float r_diff_s = std::min<float>(BETA_S*r_diff, r_ref*0.05);  // limit change to 5% of reference rate
         m_rVin = std::max<float> (m_minBw, r_ref - r_diff_v);
         m_rSend = std::min<float>(m_maxBw, r_ref + r_diff_s);
         NS_LOG_INFO ("New rate shaping buffer parameters: r_ref " << r_ref/1000. // in Kbps

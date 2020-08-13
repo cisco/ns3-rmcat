@@ -84,7 +84,7 @@ private:
     EventId m_sendEvent;
     EventId m_sendOversleepEvent;
 
-    float m_fps;  // frame-per-second 
+    float m_fps;  // frames-per-second
     double m_rVin; //bps
     double m_rSend; //bps
     std::deque<uint32_t> m_rateShapingBuf;
