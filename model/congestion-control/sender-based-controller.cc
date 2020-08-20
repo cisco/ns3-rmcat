@@ -30,6 +30,7 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <limits>
 
 
 namespace rmcat {
@@ -120,11 +121,12 @@ void SenderBasedController::updateInterLossData(uint16_t sequence) {
 
     // update state for TFRC-style inter-loss interval calculation
     if (sequence == m_ilState.expectedSeq) {
+        assert(m_ilState.intervals[0] < std::numeric_limits<uint32_t>::max());
         ++m_ilState.intervals[0];
         ++m_ilState.expectedSeq;
         return;
     }
-    assert(sequence > m_ilState.expectedSeq);
+    assert(lessThan(m_ilState.expectedSeq, sequence));
     m_ilState.intervals.push_front(1); // Start new interval; shift the existing ones
     if (m_ilState.intervals.size() > 9) {
         m_ilState.intervals.pop_back();
@@ -396,7 +398,7 @@ bool SenderBasedController::getCurrentRecvRate(float& rrateBps) const {
 }
 
 
-bool SenderBasedController::getLossIntervalInfo(float& avgInterval, uint16_t& currentInterval) const {
+bool SenderBasedController::getLossIntervalInfo(float& avgInterval, uint32_t& currentInterval) const {
     if (!m_ilState.initialized) {
         return false; // No losses yet --> no intervals
     }

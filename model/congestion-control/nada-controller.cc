@@ -299,7 +299,7 @@ void NadaController::updateMetrics() {
     }
 
     float avgInt;
-    uint16_t currentInt;
+    uint32_t currentInt;
     bool avgIntOK = getLossIntervalInfo(avgInt, currentInt);
     m_lossesSeen = avgIntOK;
     if (avgIntOK) {
