@@ -187,7 +187,7 @@ private:
     float m_Xprev;  /**< previous value of the aggregated congestion signal (x_prev in rmcat-nada), in ms */
     float m_RecvR;  /**< updated receiving rate in bps */
     float m_avgInt; /**< Average inter-loss interval in packets, according to RFC 5348 */
-    uint16_t m_currInt; /**< Most recent (currently growing) inter-loss interval in packets; called I_0 in RFC 5348 */
+    uint32_t m_currInt; /**< Most recent (currently growing) inter-loss interval in packets; called I_0 in RFC 5348 */
     bool m_lossesSeen; /**< Whether packet losses/reorderings have been detected so far */
 };
 

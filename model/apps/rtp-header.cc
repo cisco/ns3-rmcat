@@ -142,7 +142,7 @@ uint32_t RtpHeader::Deserialize (Buffer::Iterator start)
     m_timestamp = start.ReadNtohU32 ();
     m_ssrc = start.ReadNtohU32 ();
     m_csrcs.clear ();
-    for (auto i = 0; i < csrcCount; ++i) {
+    for (auto i = 0u; i < csrcCount; ++i) {
         const uint32_t csrc = start.ReadNtohU32 ();
         NS_ASSERT (m_csrcs.count (csrc) == 0);
         m_csrcs.insert (csrc);
@@ -582,7 +582,7 @@ uint32_t CCFeedbackHeader::Deserialize (Buffer::Iterator start)
         const uint32_t nPaddingBlocks = nMetricBlocks % 2;
         NS_ASSERT (len_left >= nMetricBlocks + nPaddingBlocks);
         uint16_t seq = beginSeq;
-        for (auto i = 0; i < nMetricBlocks; ++i) {
+        for (auto i = 0u; i < nMetricBlocks; ++i) {
             const auto octet1 = start.ReadU8 ();
             const auto octet2 = start.ReadU8 ();
             if (RtpHdrGetBit (octet1, 7)) {

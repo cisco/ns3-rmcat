@@ -48,7 +48,7 @@ const uint32_t RMCAT_LOG_PRINT_PRECISION = 2;  /* default precision for logs */
 class InterLossState {
 public:
     InterLossState();
-    std::deque<uint16_t> intervals;
+    std::deque<uint32_t> intervals;
     uint16_t expectedSeq;
     bool initialized; // did the first loss happen?
 };
@@ -362,7 +362,7 @@ protected:
      *         inter-loss intervals to return; in this case, the output parameters are not
      *         valid). True otherwise
      */
-    bool getLossIntervalInfo(float& avgInterval, uint16_t& currentInterval) const;
+    bool getLossIntervalInfo(float& avgInterval, uint32_t& currentInterval) const;
 
     bool m_firstSend; /**< true if at least one packet has been sent */
     uint16_t m_lastSequence; /**< sequence of the last packet sent */

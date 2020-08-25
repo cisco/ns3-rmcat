@@ -128,3 +128,7 @@ Future work
 Adding LTE topology and test cases
 
 Add support for ECN marking
+
+Encapsulate Sender's rate shaping buffer in an interface or class
+
+Wired test cases: implement the bottleneck capacity by changing the physical properties
