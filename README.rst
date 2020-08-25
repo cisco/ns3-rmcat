@@ -129,6 +129,6 @@ Adding LTE topology and test cases
 
 Add support for ECN marking
 
-Encapsulate Sender's rate shaping buffer in an interface or class
+Encapsulate Sender's rate shaping buffer in a C++ interface or class
 
-Wired test cases: implement the bottleneck capacity by changing the physical properties
+Wired test cases: implement time-varying bottleneck capacity by changing the physical link properties
