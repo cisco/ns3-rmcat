@@ -112,19 +112,18 @@ Note that in ns-3.26, the testing script (test.py) only works with python2. So o
     alias python=python2.7.3
 ::
 
-Alternatively, you can use `test_v2.csh <tools/test_v2.csh>` to explicitly invoke python2 for running the testing script and python3 for running the processing and plotting scripts.  The latter works with both python2 and python3. 
+Alternatively, you can use `test_v2.csh <tools/test_v2.csh>`_ to explicitly invoke python2 for running the testing script and python3 for running the processing and plotting scripts.  The latter works with both python2 and python3. 
  
 
 Troubleshooting
 *****************
 
-To build ns-3.26 on newer compilers: see tips `here <https://www.nsnam.org/wiki/HOWTO_build_old_versions_of_ns-3_on_newer_compilers>`. To disable warnings from breaking your build, do the following:
+To build ns-3.26 on newer compilers: see tips `here <https://www.nsnam.org/wiki/HOWTO_build_old_versions_of_ns-3_on_newer_compilers>`_. To disable warnings from breaking your build, do the following:
 ::
 
       CXXFLAGS="-Wall" ./waf configure
       ./waf -vv
 :: 
-
 
 
 
