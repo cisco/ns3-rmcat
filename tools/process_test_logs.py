@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 ###############################################################################
 #  Copyright 2016-2017 Cisco Systems, Inc.                                    #
@@ -91,14 +91,14 @@ def process_tcp_log(line, test_logs):
 def process_log(dirname, filename, all_logs):
     abs_fn = os.path.join(dirname, filename)
     if not os.path.isfile(abs_fn):
-        print "Skipping file {} (not a regular file)".format(filename)
+        print("Skipping file {} (not a regular file)".format(filename))
         return
     match = re.match(r'([a-zA-Z0-9_\.-]+).log', filename)
     if match is None:
-        print "Skipping file {} (not a log file)".format(filename)
+        print("Skipping file {} (not a log file)".format(filename))
         return
 
-    print "Processing file {}...".format(filename)
+    print("Processing file {}...".format(filename))
     test_name = match.group(1).replace(".", "_").replace("-", "_")
 
     test_logs = {'nada': {}, 'tcp': {} }
@@ -121,13 +121,13 @@ def process_log(dirname, filename, all_logs):
 def saveto_matfile(dirname, test_name, test_logs):
     'save to *.mat file'
     f_out_name = os.path.join(dirname, '{}.mat'.format(test_name))
-    print 'Creating matlab file: {}'.format(f_out_name)
+    print('Creating matlab file: {}'.format(f_out_name))
     f_out = open(f_out_name, 'w')
     f_out.write('%  id | ts | qdel | rtt | ploss | plr | xcurr ')
     f_out.write('| rrate | srate | loglen | avgint | curint\n')
     for (i, obj) in enumerate(test_logs['nada'].keys()):
         nrec = len(test_logs['nada'][obj])
-        print 'parsing flow ', obj, ' number of records: ', nrec
+        print('parsing flow ', obj, ' number of records: ', nrec)
         for j in range(nrec):
             row = process_row(test_logs['nada'][obj][j], width=12)
             f_out.write(SEP.join([str(i), row]))
@@ -135,15 +135,16 @@ def saveto_matfile(dirname, test_name, test_logs):
 
 # -------------------- #
 if len(sys.argv) != 2:
-    print >> sys.stderr, 'Usage: python {} <log_directory>'.format(sys.argv[0])
+    sys.stderr.write('Usage: python {} <log_directory>\n'.format(sys.argv[0]))
     sys.exit(1)
+
 dirname = sys.argv[1]
 assert os.path.isdir(dirname)
 all_logs = {}
 for filename in os.listdir(dirname):
     process_log(dirname, filename, all_logs)
 
-print "Creating json file with all data: all_tests.json"
+print("Creating json file with all data: all_tests.json")
 f_json_name = os.path.join(dirname, 'all_tests.json')
 f_json = open(f_json_name, 'w')
 json.dump(all_logs, f_json, indent=4, sort_keys=True)

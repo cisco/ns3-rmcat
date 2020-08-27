@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 ###############################################################################
 #  Copyright 2016-2017 Cisco Systems, Inc.                                    #
@@ -71,7 +71,7 @@ def plot_test_case(tc_name, contents, dirname):
     rmcat_keys = sorted(rmcat_log.keys())
     tcp_keys = sorted(tcp_log.keys())
 
-    print 'plotting data for tc {}...'.format(tc_name)
+    print('plotting data for tc {}...'.format(tc_name))
     nflow = len(rmcat_keys) + len(tcp_keys)
 
     l = len(colorlist)
@@ -109,7 +109,7 @@ def plot_test_case(tc_name, contents, dirname):
     # plt.legend(loc='upper left', prop={'size':6}, bbox_to_anchor=(1,1), ncol=1)
     all_curves = len(rmcat_keys) + len(tcp_keys)
     if all_curves < 12:
-        plt.legend(ncol = (all_curves / 4) + 1, loc='upper right', fontsize = 'small')
+        plt.legend(ncol = (all_curves // 4) + 1, loc='upper right', fontsize = 'small')
 
     plt.subplot(312)
     for (i, obj) in enumerate(rmcat_keys):
@@ -152,8 +152,9 @@ def plot_test_case(tc_name, contents, dirname):
 
 # ---------  #
 if len(sys.argv) != 2:
-    print >> sys.stderr, 'Usage: python {} <log_directory>'.format(sys.argv[0])
+    sys.stderr.write('Usage: python {} <log_directory>\n'.format(sys.argv[0]))
     sys.exit(1)
+
 dirname = sys.argv[1]
 assert os.path.isdir(dirname)
 
