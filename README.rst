@@ -106,14 +106,14 @@ You can also use `test.csh <tools/test.csh>`_ to run the testcases and the plot 
     # the script will use a folder with a name based on current GMT time
 
 
-Note that in ns-3.26, the testing script (test.py) only works with python2. So one may want to point the python alias to python to ensure that the `test.csh` script runs out of box: 
+Note that in ns-3.26, the testing script (test.py) only works with python2. So one may want to point the python alias to python to ensure that the `test.csh` script runs out of box:
 
 ::
     alias python=python2.7.3
 ::
 
-Alternatively, you can use `test_v2.csh <tools/test_v2.csh>`_ to explicitly invoke python2 for running the testing script and python3 for running the processing and plotting scripts.  The latter works with both python2 and python3. 
- 
+Alternatively, you can use `test_v2.csh <tools/test_v2.csh>`_ to explicitly invoke python2 for running the testing script and python3 for running the processing and plotting scripts.  The latter works with both python2 and python3.
+
 
 Troubleshooting
 *****************
@@ -123,7 +123,7 @@ To build ns-3.26 on newer compilers: see tips `here <https://www.nsnam.org/wiki/
 
       CXXFLAGS="-Wall" ./waf configure
       ./waf -vv
-:: 
+::
 
 
 
